@@ -37,6 +37,7 @@ class Update_Zombie_Admin {
 		add_action( 'admin_notices', array( $this, 'render_notices' ) );
 
 		add_action( 'admin_post_update_zombie_action', array( $this, 'handle_action' ) );
+		add_action( 'wp_ajax_update_zombie_status', array( $this, 'ajax_status' ) );
 		add_action( 'update_option_' . Update_Zombie_Settings::OPTION, array( $this, 'on_settings_saved' ), 10, 2 );
 
 		add_action( 'load-plugins.php', array( $this, 'register_plugin_rows' ) );
@@ -279,12 +280,31 @@ class Update_Zombie_Admin {
 					break;
 				}
 
-				Update_Zombie_Store::update( $id, array( 'attempts' => 0 ) );
+				/*
+				 * Never run the analysis inside the browser request: it takes
+				 * minutes and the web server will cut it off. Put the item at
+				 * the front of the queue, poke cron, and send the user to the
+				 * report page, which polls for the result.
+				 */
+				Update_Zombie_Store::update(
+					$id,
+					array(
+						'status'        => ! empty( $report->prompt_cache ) ? Update_Zombie_Store::STATUS_DIFFED : Update_Zombie_Store::STATUS_PENDING,
+						'attempts'      => 0,
+						'priority'      => 1,
+						'error_message' => null,
+					)
+				);
 
-				$processor = new Update_Zombie_Processor();
-				$result    = $processor->process( $report );
+				Update_Zombie_Log::record(
+					Update_Zombie_Log::ANALYSIS_START,
+					__( 'Analysis requested from the admin screen; moved to the front of the queue.', 'update-zombie' ),
+					$report
+				);
 
-				$notice = is_wp_error( $result ) ? 'failed' : 'analyzed';
+				self::kick_queue();
+
+				$notice = 'queued_front';
 				break;
 
 			case 'requeue':
@@ -299,8 +319,8 @@ class Update_Zombie_Admin {
 				break;
 
 			case 'run_queue':
-				$processor = new Update_Zombie_Processor();
-				$notice    = $processor->process_next() ? 'analyzed' : 'queue_empty';
+				self::kick_queue();
+				$notice = 'kicked';
 				break;
 		}
 
@@ -308,6 +328,106 @@ class Update_Zombie_Admin {
 
 		wp_safe_redirect( add_query_arg( 'zombie_notice', $notice, $redirect ) );
 		exit;
+	}
+
+	/**
+	 * Asks cron to run the queue now rather than on its next five-minute tick.
+	 *
+	 * spawn_cron() fires a non-blocking loopback request, so the work happens
+	 * in a detached process and the admin request returns immediately. With
+	 * DISABLE_WP_CRON set, system cron picks the event up instead.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return void
+	 */
+	public static function kick_queue() {
+		/*
+		 * The args make this distinct from the recurring event: WordPress
+		 * silently refuses a single event that duplicates a hook already due
+		 * within ten minutes, which the five-minute recurrence always is.
+		 */
+		$args = array( 'now' );
+
+		if ( ! wp_next_scheduled( Update_Zombie_Plugin::CRON_PROCESS, $args ) ) {
+			wp_schedule_single_event( time() - 1, Update_Zombie_Plugin::CRON_PROCESS, $args );
+		}
+
+		if ( ! defined( 'DISABLE_WP_CRON' ) || ! DISABLE_WP_CRON ) {
+			spawn_cron();
+		}
+	}
+
+	/**
+	 * Describes where a report is in the pipeline, for the live status banner.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param object $report Report row.
+	 * @return array{phase: string, label: string, done: bool, estimate: int}
+	 */
+	public static function phase_for( $report ) {
+		$done = in_array( $report->status, array( Update_Zombie_Store::STATUS_COMPLETE, Update_Zombie_Store::STATUS_ERROR ), true );
+
+		// A cached diff means downloading and diffing are behind us.
+		$has_diff = ! empty( $report->prompt_cache ) || ! empty( $report->signals );
+
+		if ( $done ) {
+			$phase = Update_Zombie_Store::STATUS_COMPLETE === $report->status ? 'complete' : 'error';
+			$label = Update_Zombie_Store::STATUS_COMPLETE === $report->status ? __( 'Analysis complete.', 'update-zombie' ) : __( 'Analysis failed.', 'update-zombie' );
+		} elseif ( Update_Zombie_Store::STATUS_ANALYZING === $report->status && $has_diff ) {
+			$phase = 'reviewing';
+			$label = __( 'The model is reading the diff now.', 'update-zombie' );
+		} elseif ( Update_Zombie_Store::STATUS_ANALYZING === $report->status ) {
+			$phase = 'diffing';
+			$label = __( 'Downloading the package and comparing it with the installed copy.', 'update-zombie' );
+		} elseif ( Update_Zombie_Store::STATUS_DIFFED === $report->status ) {
+			$phase = 'waiting_review';
+			$label = __( 'Diffed. Waiting for the queue to send it to the model.', 'update-zombie' );
+		} else {
+			$phase = 'queued';
+			$label = __( 'Queued. Download and diff start on the next queue run.', 'update-zombie' );
+		}
+
+		$estimate = 5;
+
+		if ( ! empty( $report->prompt_cache ) ) {
+			$cached = json_decode( (string) $report->prompt_cache, true );
+			$length = strlen( (string) ( $cached['diff']['diff'] ?? '' ) );
+
+			// Same ceiling the request itself gets, expressed in minutes.
+			$estimate = (int) ceil( Update_Zombie_Analyzer::timeout_for( str_repeat( 'x', $length ) ) / 60 );
+		}
+
+		return array(
+			'phase'    => $phase,
+			'label'    => $label,
+			'done'     => $done,
+			'estimate' => max( 2, $estimate ),
+		);
+	}
+
+	/**
+	 * AJAX: reports a report's current phase so the report page can poll.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return void
+	 */
+	public function ajax_status() {
+		check_ajax_referer( 'update_zombie_status', 'nonce' );
+
+		if ( ! current_user_can( self::CAP_VIEW ) ) {
+			wp_send_json_error( array( 'message' => __( 'Not allowed.', 'update-zombie' ) ), 403 );
+		}
+
+		$report = Update_Zombie_Store::get( isset( $_POST['report'] ) ? absint( $_POST['report'] ) : 0 );
+
+		if ( ! $report ) {
+			wp_send_json_error( array( 'message' => __( 'No such report.', 'update-zombie' ) ), 404 );
+		}
+
+		wp_send_json_success( self::phase_for( $report ) );
 	}
 
 	/**
@@ -327,6 +447,8 @@ class Update_Zombie_Admin {
 
 		$messages = array(
 			'queued'      => __( 'New updates were queued for analysis.', 'update-zombie' ),
+			'queued_front' => __( 'Moved to the front of the queue. This page updates itself as the analysis runs.', 'update-zombie' ),
+			'kicked'      => __( 'Queue run started in the background.', 'update-zombie' ),
 			'nothing_new' => __( 'No unanalysed updates were found.', 'update-zombie' ),
 			'analyzed'    => __( 'Analysis finished.', 'update-zombie' ),
 			'queue_empty' => __( 'Nothing is waiting in the queue.', 'update-zombie' ),

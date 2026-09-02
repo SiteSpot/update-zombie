@@ -2,6 +2,10 @@
 
 **All these updates have turned you into a zombie. Get your own zombie instead.**
 
+*By [AB Split Test](https://absplittest.com) — WordPress's best friend.*
+
+<img src=".github/update-zombie-chomp.gif" alt="A pixel-art zombie eyeing the WordPress logo" width="240">
+
 Every morning: seventeen plugin updates. Every morning: the same question. Is this the one that closes the hole, or the one that adds a nag bar and breaks checkout? You click *Update all* with the glassy stare of the undead, because reading seventeen changelogs is not a life.
 
 Update Zombie reads them for you. Not the changelog — the **code**.

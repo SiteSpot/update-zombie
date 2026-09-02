@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 class Update_Zombie_Store {
 
 	const DB_VERSION_OPTION = 'update_zombie_db_version';
-	const DB_VERSION        = '3';
+	const DB_VERSION        = '4';
 
 	const STATUS_PENDING   = 'pending';
 	const STATUS_ANALYZING = 'analyzing';
@@ -82,6 +82,7 @@ class Update_Zombie_Store {
 			decision varchar(20) NOT NULL DEFAULT 'none',
 			error_message text NULL,
 			attempts smallint(5) unsigned NOT NULL DEFAULT 0,
+			priority tinyint(1) unsigned NOT NULL DEFAULT 0,
 			created_at datetime NOT NULL,
 			analyzed_at datetime NULL,
 			notified_at datetime NULL,
@@ -284,7 +285,7 @@ class Update_Zombie_Store {
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT * FROM {$table} WHERE status IN ( %s, %s ) AND attempts < 3
-				 ORDER BY FIELD( status, %s, %s ), created_at ASC LIMIT 1",
+				 ORDER BY priority DESC, FIELD( status, %s, %s ), created_at ASC LIMIT 1",
 				self::STATUS_DIFFED,
 				self::STATUS_PENDING,
 				self::STATUS_DIFFED,

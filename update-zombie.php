@@ -1,12 +1,13 @@
 <?php
 /**
  * Plugin Name:       Update Zombie
- * Plugin URI:        https://example.com/update-zombie
+ * Plugin URI:        https://sitespot.dev/updatezombie
  * Description:       Don't let all these updates turn you into a zombie. Downloads each pending update, diffs it against what you're running, and has an AI judge whether it's a security fix, a good update, or a shit one.
  * Version:           0.5.0
  * Requires at least: 7.0
  * Requires PHP:      7.4
- * Author:            Tom
+ * Author:            AB Split Test
+ * Author URI:        https://absplittest.com
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       update-zombie

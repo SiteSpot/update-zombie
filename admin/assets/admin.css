@@ -376,3 +376,82 @@
 	line-height: 1.6;
 	word-break: break-word;
 }
+
+/* Live analysis progress */
+
+.uz-progress {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-left: 4px solid #2271b1;
+	padding: 16px 20px 18px;
+	margin: 20px 0;
+	box-shadow: 0 1px 1px rgba( 0, 0, 0, 0.04 );
+}
+
+.uz-progress-head {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+}
+
+.uz-progress-head h2 {
+	margin: 0 0 2px;
+	font-size: 16px;
+}
+
+.uz-progress-label {
+	margin: 0;
+	color: #3c434a;
+}
+
+.uz-progress-eta {
+	margin: 12px 0 0;
+	color: #646970;
+	max-width: 720px;
+}
+
+.uz-spinner {
+	flex: 0 0 auto;
+	width: 28px;
+	height: 28px;
+	border: 3px solid #dcdcde;
+	border-top-color: #2271b1;
+	border-radius: 50%;
+	animation: uz-spin 0.9s linear infinite;
+}
+
+@keyframes uz-spin {
+	to { transform: rotate( 360deg ); }
+}
+
+.uz-progress-steps {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 14px 0 0;
+}
+
+.uz-step {
+	display: inline-block;
+	padding: 3px 10px;
+	border-radius: 12px;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	color: #787c82;
+}
+
+.uz-step.is-done {
+	background: #edfaef;
+	border-color: #68de7c;
+	color: #005a1f;
+}
+
+.uz-step.is-current {
+	background: #f0f6fc;
+	border-color: #2271b1;
+	color: #12457a;
+	font-weight: 600;
+}

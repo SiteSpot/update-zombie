@@ -1,0 +1,11 @@
+# Excluded from the distributed plugin zip (used by wp-cli dist-archive and the
+# WordPress.org deploy action). Directory assets live in .wordpress-org/.
+.git
+.gitignore
+.gitattributes
+.distignore
+.github
+.wordpress-org
+README.md
+node_modules
+vendor

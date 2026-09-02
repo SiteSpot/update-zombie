@@ -54,14 +54,60 @@ $uz_engine   = $payload['engine'] ?? 'ai';
 			</p>
 		</div>
 	<?php elseif ( Update_Zombie_Store::STATUS_COMPLETE !== $report->status ) : ?>
-		<div class="notice notice-info">
-			<p><?php esc_html_e( 'This update has not been analysed yet.', 'update-zombie' ); ?></p>
-			<p>
-				<a href="<?php echo esc_url( Update_Zombie_Admin::action_url( 'analyze', $report->id ) ); ?>" class="button button-primary">
-					<?php esc_html_e( 'Analyse now', 'update-zombie' ); ?>
-				</a>
+		<?php
+		$uz_phase   = Update_Zombie_Admin::phase_for( $report );
+		$uz_started = $report->created_at ? strtotime( $report->created_at . ' UTC' ) : time();
+		?>
+		<div class="uz-progress" id="uz-progress" data-report="<?php echo (int) $report->id; ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'update_zombie_status' ) ); ?>" data-phase="<?php echo esc_attr( $uz_phase['phase'] ); ?>">
+			<div class="uz-progress-head">
+				<span class="uz-spinner" aria-hidden="true"></span>
+				<div>
+					<h2><?php esc_html_e( 'Analysing this update', 'update-zombie' ); ?></h2>
+					<p class="uz-progress-label"><?php echo esc_html( $uz_phase['label'] ); ?></p>
+				</div>
+			</div>
+			<p class="uz-progress-eta">
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %d: number of minutes. */
+						__( 'This usually takes two to five minutes, and up to %d for a large update. The work runs in the background — you can leave this page and come back, or just wait; it refreshes itself.', 'update-zombie' ),
+						(int) $uz_phase['estimate']
+					)
+				);
+				?>
 			</p>
+			<p class="uz-progress-steps">
+				<span class="uz-step <?php echo in_array( $uz_phase['phase'], array( 'diffing', 'waiting_review', 'reviewing' ), true ) ? 'is-done' : ( 'queued' === $uz_phase['phase'] ? 'is-current' : '' ); ?>"><?php esc_html_e( 'Queued', 'update-zombie' ); ?></span>
+				<span class="uz-step <?php echo in_array( $uz_phase['phase'], array( 'waiting_review', 'reviewing' ), true ) ? 'is-done' : ( 'diffing' === $uz_phase['phase'] ? 'is-current' : '' ); ?>"><?php esc_html_e( 'Download & diff', 'update-zombie' ); ?></span>
+				<span class="uz-step <?php echo 'reviewing' === $uz_phase['phase'] ? 'is-current' : ''; ?>"><?php esc_html_e( 'AI review', 'update-zombie' ); ?></span>
+				<span class="uz-step"><?php esc_html_e( 'Verdict', 'update-zombie' ); ?></span>
+			</p>
+			<?php if ( empty( $uz_signals ) ) : ?>
+				<p class="uz-muted"><?php esc_html_e( 'The "What changed" facts appear here as soon as the diff is done, before the AI has said anything.', 'update-zombie' ); ?></p>
+			<?php endif; ?>
 		</div>
+		<script>
+		( function () {
+			var box = document.getElementById( 'uz-progress' );
+			if ( ! box || ! window.fetch ) { return; }
+			var label = box.querySelector( '.uz-progress-label' );
+			var lastPhase = box.getAttribute( 'data-phase' );
+			function poll() {
+				var body = new URLSearchParams( { action: 'update_zombie_status', nonce: box.getAttribute( 'data-nonce' ), report: box.getAttribute( 'data-report' ) } );
+				fetch( <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>, { method: 'POST', credentials: 'same-origin', body: body } )
+					.then( function ( r ) { return r.json(); } )
+					.then( function ( j ) {
+						if ( ! j || ! j.success ) { return; }
+						if ( j.data.done ) { window.location.reload(); return; }
+						if ( j.data.phase !== lastPhase ) { window.location.reload(); return; }
+						if ( label ) { label.textContent = j.data.label; }
+					} )
+					.catch( function () {} );
+			}
+			setInterval( poll, 10000 );
+		} )();
+		</script>
 	<?php else : ?>
 
 		<div class="uz-verdict-card uz-verdict-<?php echo esc_attr( $report->verdict ); ?>">

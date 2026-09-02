@@ -1,0 +1,18 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Dependencies and build output (none committed; the plugin has no build step)
+node_modules/
+vendor/
+
+# Local tooling
+phpcs.xml.dist.local
+.phpunit.result.cache
+
+# Never commit credentials
+*.env
+wp-config*.php

@@ -53,6 +53,22 @@ The constant always overrides the settings field, and keeps the key out of the d
 
 It lives under Tools → Update Zombie. The Reports tab is an inbox: by default it lists only updates that are not installed, security fixes first, each with the version actually running, a one-line outcome and an Update now link that hands off to WordPress's own updater. Installed updates move to a Done view. A single collapsible line above the list says what the zombie installed on its own in the last week. The Plugins screen shows the verdict under each plugin's row, and the Activity tab is the full audit trail.
 
+**It's AI. Read this.**
+
+Update Zombie uses an AI model to read code and decide whether an update is a security fix. It has a lot of checks and balances, but it is still AI, and AI gets things wrong. It can miss a real fix. It can call a routine change a security fix. It reads a filtered diff, not the whole package, and it is not a malware scanner.
+
+What it is not allowed to do, no matter what the model says:
+
+* Change anything in Advisory mode, the default. It only reports; WordPress installs exactly what it would have anyway.
+* Install on hearsay. In Guarded or Autopilot, a security fix only installs itself when the model rated it high or critical impact, was confident above your threshold, and cited a specific file that was actually in the diff.
+* Install anything judged Avoid or Questionable, or anything held back. Those wait for you.
+* Install a major WordPress release unattended, unless you explicitly switch that on.
+* Install anything from the No-AI engine by default.
+* Stop you. It never blocks a manual update, and every install it makes goes through WordPress's own updater.
+* Do anything quietly. Every verdict, install and failure is in the Activity log, and it emails you.
+
+The "What changed" facts on every report are computed from the diff, not generated, and are exact. Only the verdict is an opinion. Treat it as a good second opinion that will occasionally be wrong.
+
 **Facts, then judgement**
 
 Two different things appear on every report, and they are not equally trustworthy.

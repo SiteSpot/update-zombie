@@ -49,6 +49,22 @@ Above the list, a single collapsible line takes the credit:
 
 The menu badge counts what needs a human — uninstalled security fixes and held-back updates — not the size of the queue.
 
+## ⚠️ It's AI. Read this.
+
+Update Zombie uses an AI model to read code and decide whether an update is a security fix. It has a lot of checks and balances, but **it is still AI, and AI gets things wrong.** It can miss a real fix. It can call a routine change a security fix. It reads a filtered diff, not the whole package, and it is not a malware scanner — a compromised release that also fixes a real bug could get through.
+
+What it is *not allowed* to do, no matter what the model says:
+
+- **Change anything in Advisory mode**, the default. It only reports. WordPress installs exactly what it would have installed anyway.
+- **Install on hearsay.** In Guarded or Autopilot, a security fix only installs itself when the model rated it high or critical impact, was confident above your threshold, *and* cited a specific file that was actually in the diff. No file, no install.
+- **Install anything it judged "Avoid" or "Questionable"**, or anything held back. Those wait for you.
+- **Install a major WordPress release** unattended, unless you explicitly switch that on.
+- **Install anything from the No-AI engine** by default.
+- **Stop you.** It never blocks a manual update. Every install it does make goes through WordPress's own updater, with WordPress's own checks.
+- **Do anything quietly.** Every update spotted, every verdict, every install and every failure is in the Activity log, and it emails you.
+
+The "What changed" facts on every report — lines changed, files touched, security checks added, new outbound calls — are computed from the diff, not generated. They're exact. Only the verdict is an opinion. Treat it as a good second opinion from something that has read more diffs than you have time to, and that will occasionally be wrong.
+
 ## Modes
 
 | Mode | Security fixes | Good updates | Bad updates |

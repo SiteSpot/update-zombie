@@ -47,7 +47,14 @@ class Update_Zombie_Enforcer {
 			return $update;
 		}
 
-		$slug = ! empty( $item->slug ) ? $item->slug : dirname( (string) ( $item->plugin ?? '' ) );
+		$slug = Update_Zombie_Scanner::plugin_slug(
+			(string) ( $item->plugin ?? '' ),
+			(string) ( $item->slug ?? '' )
+		);
+
+		if ( '' === $slug ) {
+			return $update;
+		}
 
 		return $this->decide_for( 'plugin', $slug, $item->new_version, $update );
 	}
@@ -180,8 +187,7 @@ class Update_Zombie_Enforcer {
 		$threshold = (int) Update_Zombie_Settings::get( 'security_confidence', 70 );
 
 		$is_security = ! empty( $report->is_security )
-			&& (int) $report->confidence >= $threshold
-			&& self::security_substantiated( $report );
+			&& self::security_substantiated( $report, $threshold );
 
 		if ( $is_security && self::core_release_allowed( $report ) ) {
 			return 'apply';
@@ -195,8 +201,15 @@ class Update_Zombie_Enforcer {
 			return 'hold';
 		}
 
+		// A security-labelled release that did not pass the strict severity,
+		// citation and confidence gate must follow WordPress's existing policy.
+		// It cannot fall through and borrow Autopilot's good-update permission.
+		if ( ! empty( $report->is_security ) || 'security' === $report->verdict ) {
+			return 'defer';
+		}
+
 		if ( Update_Zombie_Settings::MODE_AUTOPILOT === $mode
-			&& in_array( $report->verdict, array( 'good', 'neutral', 'security' ), true )
+			&& in_array( $report->verdict, array( 'good', 'neutral' ), true )
 			&& in_array( $report->recommendation, array( 'apply', 'apply_now' ), true )
 			&& self::core_release_allowed( $report ) ) {
 			return 'apply';
@@ -209,31 +222,27 @@ class Update_Zombie_Enforcer {
 	 * Requires the model to have shown its working before anything installs
 	 * itself on the strength of a security claim.
 	 *
-	 * A verdict that says "this is a security fix" but cites no file is either
-	 * a hallucination or a malformed response. Either way it is not evidence,
-	 * and the cost of acting on it is unattended code installation.
+	 * The cited file is bound to the reviewed diff by the analyzer. This final
+	 * gate also requires high/critical impact and confidence on the same
+	 * finding; a strong score on a separate low-impact finding cannot borrow
+	 * its way into an unattended installation.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param object $report Completed report row.
+	 * @param object $report    Completed report row.
+	 * @param int    $threshold Minimum per-finding confidence.
 	 * @return bool
 	 */
-	protected static function security_substantiated( $report ) {
+	protected static function security_substantiated( $report, $threshold ) {
 		$payload = Update_Zombie_Store::payload( $report );
 
-		/*
-		 * A no-AI verdict corroborates a changelog against pattern-matched
-		 * code signals. That is real evidence, but nothing has read the fix to
-		 * check it closes anything, so by default it informs rather than
-		 * installs. Opting in is a deliberate choice, not a default.
-		 */
-		if ( Update_Zombie_Settings::ENGINE_SIGNALS === ( $payload['engine'] ?? 'ai' )
-			&& ! Update_Zombie_Settings::get( 'signals_auto_security' ) ) {
-			return false;
-		}
-
 		foreach ( (array) ( $payload['security_findings'] ?? array() ) as $finding ) {
-			if ( ! empty( $finding['file'] ) ) {
+			$severity   = strtolower( (string) ( $finding['severity'] ?? 'unknown' ) );
+			$confidence = is_numeric( $finding['confidence'] ?? null ) ? (int) $finding['confidence'] : 0;
+
+			if ( ! empty( $finding['file'] )
+				&& in_array( $severity, array( 'critical', 'high' ), true )
+				&& $confidence >= $threshold ) {
 				return true;
 			}
 		}

@@ -250,23 +250,20 @@
 	color: #7a5c00;
 }
 
-/* Plugins screen rows */
+/* Core Plugins and Updates screens */
 
-.update-zombie-row .update-message {
-	border-left-color: #c3c4c7;
+.uz-plugin-title-status {
+	display: inline-block;
+	margin-left: 6px;
+	vertical-align: 1px;
+	text-decoration: none;
 }
 
-.update-zombie-row.uz-security .update-message,
-.update-zombie-row.uz-shit .update-message {
-	border-left-color: #d63638;
-}
-
-.update-zombie-row.uz-questionable .update-message {
-	border-left-color: #dba617;
-}
-
-.update-zombie-row.uz-good .update-message {
-	border-left-color: #00a32a;
+.uz-plugin-title-status.uz-badge-security {
+	border-color: #b32d2e;
+	border-radius: 999px;
+	color: #fff;
+	background: #d63638;
 }
 
 /* Change signal chips */

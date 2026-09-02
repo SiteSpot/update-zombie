@@ -182,7 +182,7 @@ class Update_Zombie_Notifier {
 			$lines[] = str_repeat( '-', 40 );
 
 			foreach ( $verdict['security_findings'] as $finding ) {
-				$lines[] = sprintf( '* %s (%s)', $finding['title'], $finding['file'] );
+				$lines[] = sprintf( '* [%s] %s (%s)', strtoupper( (string) ( $finding['severity'] ?? 'unknown' ) ), $finding['title'], $finding['file'] );
 				$lines[] = '  ' . $finding['detail'];
 			}
 		}
@@ -212,7 +212,9 @@ class Update_Zombie_Notifier {
 		$lines[] = __( 'Full report:', 'update-zombie' );
 		$lines[] = Update_Zombie_Admin::report_url( $report->id );
 		$lines[] = '';
-		$lines[] = __( 'This verdict came from an AI reading a code diff. It can be wrong. Treat it as a second opinion, not a guarantee.', 'update-zombie' );
+		$lines[] = Update_Zombie_Settings::ENGINE_SIGNALS === ( $verdict['engine'] ?? 'ai' )
+			? __( 'This verdict came from deterministic changelog and diff signals. It cannot grade impact or verify that a fix is complete.', 'update-zombie' )
+			: __( 'This verdict came from an AI reading a code diff. It can be wrong. Treat it as a second opinion, not a guarantee.', 'update-zombie' );
 
 		wp_mail( Update_Zombie_Settings::notification_address(), $subject, implode( "\n", $lines ) );
 	}

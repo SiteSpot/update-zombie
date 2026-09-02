@@ -1,5 +1,7 @@
 # Update Zombie 🧟
 
+![A pixel-art zombie at night, two pirates already down, two more with cutlasses raised](.wordpress-org/banner-1544x500.png)
+
 **All these updates have turned you into a zombie. Get your own zombie instead.**
 
 *By [AB Split Test](https://absplittest.com) — WordPress's best friend.*
@@ -19,11 +21,11 @@ When WordPress offers an update, Update Zombie:
 3. **Strips the noise** — `vendor/`, `node_modules`, minified bundles, images, translations, and (for core) your `wp-config.php`, which is never read.
 4. **Scans the diff for facts**, no AI involved: lines changed, styling touched, HTML structure modified, new outbound HTTP calls, database schema changes, security checks added or removed, risky PHP functions. Exact, free, same every time.
 5. **Sends the interesting parts to a model via OpenRouter**, which answers one question with evidence: *does this code visibly close a vulnerability?* Not "does the changelog say security" — the changelog says security when someone fixed a typo in an `esc_html()` call.
-6. **Derives the verdict from the evidence.** The model lists what it found and where. If nothing cites a file, it's not a security fix, whatever the prose says.
+6. **Derives the verdict from the evidence.** The model lists what it found, its impact, and where the fix appears. A citation only counts when it exactly matches a file included in the review.
 
 Then, in **Guarded** mode:
 
-- Security fix, confident, cited → **installed automatically**, usually within ten to twenty minutes of WordPress.org publishing it.
+- High- or critical-impact security fix, confident, and cited to a file actually reviewed → **installed automatically** on the next scan and processing cycles. Timing depends on WP-Cron traffic and provider availability.
 - Anything else → **left alone**. Your existing auto-update settings apply, exactly as before. Update Zombie never widens what WordPress would have done on its own.
 - Judged actively bad → held back from unattended installation. The *Update now* button still works.
 
@@ -34,8 +36,8 @@ Then, in **Guarded** mode:
 | Mode | Security fixes | Good updates | Bad updates |
 |---|---|---|---|
 | **Advisory** (default) | reported | reported | reported |
-| **Guarded** | **auto-installed** | your settings | held |
-| **Autopilot** | **auto-installed** | **auto-installed** | held |
+| **Guarded** | **high/critical auto-installed; lower impact follows your settings** | your settings | held |
+| **Autopilot** | **high/critical auto-installed; lower impact follows your settings** | **auto-installed** | held |
 
 Advisory changes nothing about your site. It cannot strand you on a vulnerable version by being wrong, because it never decides anything. Start there, read a few reports, then turn on Guarded when you trust it.
 
@@ -80,14 +82,14 @@ WordPress 7.0 shipped an AI Client API — a provider registry, an HTTP adapter,
 ## Things it does not do
 
 - **Read the whole internet.** It reads a filtered diff, capped at 300,000 characters by default. The report lists what it couldn't fit. (We measured: sending more makes the analysis *worse*, not better — a 1 MB prompt returned a confident summary with zero cited findings, at thirteen times the cost of the same update at 300 KB.)
-- **Install on hearsay.** A "security fix" with no file cited never auto-installs, in any mode.
+- **Install on hearsay.** A "security fix" must be high or critical, meet the confidence threshold, and cite a file actually included in the review before it can auto-install.
 - **Install a major WordPress release** unattended, unless you explicitly opt in. Point releases only.
 - **Stop you.** Holding an update back only affects unattended installs. Manual updates always work.
 - **Guarantee anything.** It's a model reading a diff. It's a very good second opinion. It's still an opinion.
 
 ## Without AI
 
-Switch the engine to **No AI** and it still works: changelog corroborated against the pattern scan. Nothing leaves your site, nothing costs anything. It can tell you security checks were added; it can't tell you they're correct. By default it reports rather than installs.
+Switch the engine to **No AI** and it still works: changelog corroborated against the pattern scan. Nothing leaves your site, nothing costs anything. It can tell you security checks were added, but it cannot establish impact or prove the fix is correct, so it reports rather than auto-installs.
 
 ## For developers
 

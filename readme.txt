@@ -12,7 +12,7 @@ Don't let all these updates turn you into a zombie. Update Zombie reads each upd
 
 == Description ==
 
-WordPress asks you to install updates every day and tells you almost nothing about what is in them. Update Zombie reads them for you — and, if you let it, installs the security fixes within minutes while leaving everything else exactly as your settings would have.
+WordPress asks you to install updates every day and tells you almost nothing about what is in them. Update Zombie reads them for you — and, if you let it, installs high-impact security fixes within minutes while leaving lower-impact fixes to your normal WordPress settings.
 
 When WordPress offers an update, Update Zombie downloads the package to a temporary directory, diffs it against the copy actually running on your site, and sends the interesting parts to an AI model via OpenRouter. It comes back with two separate judgements: is this a security fix, and is this a good update.
 
@@ -28,8 +28,8 @@ When WordPress offers an update, Update Zombie downloads the package to a tempor
 **Three modes, your choice**
 
 * **Advisory** (default) — reports only. WordPress installs exactly what it would have installed anyway. A wrong verdict can never strand you on a vulnerable version.
-* **Guarded** — security fixes install automatically; updates judged questionable or shit are held back from unattended installation until you approve them.
-* **Autopilot** — security fixes and updates judged good install automatically; bad ones are held back.
+* **Guarded** — high- or critical-impact security fixes install automatically; lower-impact fixes follow your normal settings, and updates judged questionable or shit are held back until you approve them.
+* **Autopilot** — high- or critical-impact security fixes and updates judged good install automatically; lower-impact fixes follow your normal settings, and bad ones are held back.
 
 Holding an update back never blocks you from installing it by hand. Guarded and Autopilot only change what happens unattended.
 
@@ -61,7 +61,7 @@ The **verdict** is the model's opinion about those changes. That is the part tha
 
 If you would rather not send code to a third party — or just do not want to pay for or configure anything — switch the analysis engine to **No AI** in the settings. It corroborates the changelog against those same computed signals: a release only counts as a security fix when the changelog says so *and* the diff actually adds matching capability, nonce, escaping or sanitisation calls. A changelog claiming "security fix" with no matching code change is reported as exactly that discrepancy.
 
-It is deliberately more cautious than the AI engine. It can see that security checks were added; it cannot tell you whether they are correct or complete. So its confidence is capped at 75%, and by default a no-AI verdict never installs anything automatically — it reports and notifies only. There is an opt-in if you want otherwise.
+It is deliberately more cautious than the AI engine. It can see that security checks were added; it cannot tell you whether they are correct or complete, or grade their impact reliably. Its confidence is capped at 75%, and a no-AI verdict reports and notifies only.
 
 **A verdict is a second opinion**
 
@@ -125,19 +125,27 @@ Yes. Set the analysis engine to "No AI" in the settings. You lose the code-readi
 
 = Why does the no-AI engine refuse to auto-install? =
 
-Because it has not read the fix. It can tell that escaping was added to a file the changelog mentions, which is decent evidence, but not that the vulnerability is actually closed. Auto-installing on that is a bigger leap than auto-installing on a model that read the code. There is an opt-in checkbox if you disagree.
+Because it has not read the fix. It can tell that escaping was added to a file the changelog mentions, which is decent evidence, but not that the vulnerability is actually closed or severe enough to justify overriding your normal update policy.
 
 == Screenshots ==
 
-1. The reports screen, listing every analysed update with its verdict and a row of computed change signals.
-2. A single report: what changed, security findings, concerns, and exactly which files were reviewed.
-3. The activity log, showing everything the plugin did unattended.
-4. Settings, with the three enforcement modes and the AI/no-AI engine choice.
+1. The Reports screen: every pending update with its verdict, confidence, what was done about it, and the computed change chips.
+2. A security report: the verdict, cited findings with file paths and excerpts, concerns, and what the model could not read.
+3. The Plugins screen: the verdict sits under each plugin row, where you already look.
+4. An analysis in progress: the diff facts appear first, then the live status while the model reads.
+5. The Activity log: everything the zombie did, including while you were not looking.
+6. Settings: engine, provider, mode, and how much to read.
 
 == Changelog ==
 
 = 0.5.0 =
-* Polls WordPress.org for updates every fifteen minutes from its own cron instead of waiting for core's twice-daily check, so a security patch is judged and installed within roughly ten to twenty minutes of being published.
+* Shows compact Update Zombie statuses beside plugin names on Dashboard > Updates and Plugins, with a distinct red Security badge for security fixes.
+* Polls WordPress and registered premium/private update providers every fifteen minutes from its own cron instead of waiting for core's twice-daily check. Installation timing depends on WP-Cron traffic and provider availability.
+* Only high- or critical-impact security findings can widen auto-update, and only when the same finding meets the confidence threshold and cites a file actually included in the review.
+* Lower-impact, uncertain, malformed, or uncited security findings follow the site's normal WordPress auto-update policy, including in Autopilot. The no-AI engine is report-only because it cannot reliably grade impact.
+* Fixed premium and single-file plugin identity so reports match the exact object passed through WordPress's official auto-update hooks.
+* Forced discovery now bypasses WordPress's two-hour cron cache in memory without deleting saved update data, and ignores its own transient writes to prevent a one-minute scan loop.
+* Uninstall now removes both plugin database tables.
 * Malformed provider responses are treated as transient and retried once.
 * Repository README, .gitignore.
 

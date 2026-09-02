@@ -52,7 +52,6 @@ class Update_Zombie_Settings {
 		return array(
 			'mode'                  => self::MODE_ADVISORY,
 			'analysis_engine'       => self::ENGINE_AI,
-			'signals_auto_security' => false,
 			'watch_plugins'         => true,
 			'watch_themes'          => true,
 			'watch_core'            => true,
@@ -68,9 +67,8 @@ class Update_Zombie_Settings {
 			 */
 			'diff_char_budget'      => 300000,
 			'max_file_bytes'        => 524288,
-			// Fifteen minutes, polling WordPress.org ourselves: with the queue
-			// draining every five, a security patch is judged and installed in
-			// roughly ten to twenty minutes of being published.
+			// Fifteen minutes, polling every WordPress-registered update source;
+			// the five-minute processing queue handles discovered packages.
 			'analysis_interval'     => 'update_zombie_fifteen_minutes',
 			'retention_days'        => 90,
 			'openrouter_key'        => '',
@@ -157,7 +155,7 @@ class Update_Zombie_Settings {
 		$engines                = array( self::ENGINE_AI, self::ENGINE_SIGNALS );
 		$out['analysis_engine'] = in_array( $input['analysis_engine'] ?? '', $engines, true ) ? $input['analysis_engine'] : $defaults['analysis_engine'];
 
-		foreach ( array( 'signals_auto_security', 'watch_plugins', 'watch_themes', 'watch_core', 'core_majors', 'notify_email', 'notify_on_security', 'notify_on_concerns', 'notify_on_held', 'notify_on_error', 'webhook_enabled' ) as $flag ) {
+		foreach ( array( 'watch_plugins', 'watch_themes', 'watch_core', 'core_majors', 'notify_email', 'notify_on_security', 'notify_on_concerns', 'notify_on_held', 'notify_on_error', 'webhook_enabled' ) as $flag ) {
 			$out[ $flag ] = ! empty( $input[ $flag ] );
 		}
 

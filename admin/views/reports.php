@@ -13,8 +13,8 @@ $uz_availability = Update_Zombie_Analyzer::availability();
 $uz_mode         = Update_Zombie_Enforcer::mode();
 $uz_mode_labels  = array(
 	Update_Zombie_Settings::MODE_ADVISORY  => __( 'Advisory — reports only, WordPress decides what installs.', 'update-zombie' ),
-	Update_Zombie_Settings::MODE_GUARDED   => __( 'Guarded — security fixes install automatically, bad updates are held back.', 'update-zombie' ),
-	Update_Zombie_Settings::MODE_AUTOPILOT => __( 'Autopilot — security and good updates install automatically, bad ones are held back.', 'update-zombie' ),
+	Update_Zombie_Settings::MODE_GUARDED   => __( 'Guarded — high-impact security fixes install automatically, bad updates are held back.', 'update-zombie' ),
+	Update_Zombie_Settings::MODE_AUTOPILOT => __( 'Autopilot — high-impact security and good updates install automatically, bad ones are held back.', 'update-zombie' ),
 );
 ?>
 <div class="wrap update-zombie-wrap">

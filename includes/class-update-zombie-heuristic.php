@@ -101,7 +101,7 @@ class Update_Zombie_Heuristic {
 			'recommendation'         => $concerns ? 'review' : ( $is_security ? 'apply' : 'review' ),
 			'headline'               => $this->headline( $report, $signals, $is_security, $concerns ),
 			'summary'                => $this->summary( $report, $signals, $changelog, $is_security, $confidence ),
-			'security_findings'      => $this->findings( $found, $cves ),
+			'security_findings'      => $this->findings( $found, $cves, $confidence ),
 			'concerns'               => $concerns,
 			'breaking_changes'       => array(),
 			'changelog_corroborates' => $claims_security,
@@ -173,10 +173,11 @@ class Update_Zombie_Heuristic {
 	 * @since 0.3.0
 	 *
 	 * @param array<string, array<string, mixed>> $found Detected signals.
-	 * @param string[]                            $cves  Advisory identifiers from the changelog.
-	 * @return array<int, array<string, string>>
+	 * @param string[]                            $cves       Advisory identifiers from the changelog.
+	 * @param int                                 $confidence Heuristic confidence.
+	 * @return array<int, array<string, mixed>>
 	 */
-	protected function findings( array $found, array $cves ) {
+	protected function findings( array $found, array $cves, $confidence ) {
 		if ( ! isset( $found['hardening_added'] ) ) {
 			return array();
 		}
@@ -185,9 +186,11 @@ class Update_Zombie_Heuristic {
 
 		foreach ( array_slice( $found['hardening_added']['files'], 0, 5 ) as $index => $file ) {
 			$findings[] = array(
+				'severity'   => 'unknown',
 				'title'      => __( 'Security checks added', 'update-zombie' ),
 				'detail'     => __( 'Capability checks, nonce verification, escaping or sanitisation calls were added to this file. Detected from the diff, not from reading the logic, so what it protects against is unknown.', 'update-zombie' ),
 				'file'       => (string) $file,
+				'confidence' => (int) $confidence,
 				'excerpt'    => '',
 				'identifier' => (string) ( $cves[ $index ] ?? ( $cves[0] ?? '' ) ),
 			);

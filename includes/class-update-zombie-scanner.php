@@ -106,11 +106,7 @@ class Update_Zombie_Scanner {
 			}
 
 			$data = $installed[ $plugin_file ] ?? array();
-			$slug = ! empty( $update->slug ) ? $update->slug : dirname( $plugin_file );
-
-			if ( '.' === $slug ) {
-				$slug = basename( $plugin_file, '.php' );
-			}
+			$slug = self::plugin_slug( $plugin_file, (string) ( $update->slug ?? '' ) );
 
 			$enqueued = Update_Zombie_Store::enqueue(
 				array(
@@ -130,6 +126,35 @@ class Update_Zombie_Scanner {
 		}
 
 		return $created;
+	}
+
+	/**
+	 * Returns the canonical plugin identity used by WordPress update hooks.
+	 *
+	 * The update provider's optional slug is only a fallback. The plugin file
+	 * is stable for WordPress.org, premium, private, and single-file plugins,
+	 * so using it prevents two providers' slugs from sharing a verdict.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param string $plugin_file Plugin basename, such as vendor/plugin.php.
+	 * @param string $fallback    Provider slug when no plugin file is present.
+	 * @return string
+	 */
+	public static function plugin_slug( $plugin_file, $fallback = '' ) {
+		$plugin_file = ltrim( str_replace( '\\', '/', (string) $plugin_file ), '/' );
+
+		if ( '' === $plugin_file ) {
+			return sanitize_key( $fallback );
+		}
+
+		$slug = dirname( $plugin_file );
+
+		if ( '.' === $slug || '' === $slug ) {
+			$slug = basename( $plugin_file, '.php' );
+		}
+
+		return $slug;
 	}
 
 	/**

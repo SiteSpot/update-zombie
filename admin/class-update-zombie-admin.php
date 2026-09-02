@@ -40,7 +40,6 @@ class Update_Zombie_Admin {
 		add_action( 'wp_ajax_update_zombie_status', array( $this, 'ajax_status' ) );
 		add_action( 'update_option_' . Update_Zombie_Settings::OPTION, array( $this, 'on_settings_saved' ), 10, 2 );
 
-		add_action( 'load-plugins.php', array( $this, 'register_plugin_rows' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( UPDATE_ZOMBIE_FILE ), array( $this, 'action_links' ) );
 	}
 
@@ -148,7 +147,7 @@ class Update_Zombie_Admin {
 	 * @return void
 	 */
 	public function enqueue_assets( $hook ) {
-		if ( false === strpos( $hook, self::PAGE_REPORTS ) && 'plugins.php' !== $hook ) {
+		if ( false === strpos( $hook, self::PAGE_REPORTS ) && ! in_array( $hook, array( 'plugins.php', 'update-core.php' ), true ) ) {
 			return;
 		}
 
@@ -158,6 +157,22 @@ class Update_Zombie_Admin {
 			array(),
 			UPDATE_ZOMBIE_VERSION
 		);
+
+		if ( in_array( $hook, array( 'plugins.php', 'update-core.php' ), true ) ) {
+			wp_enqueue_script(
+				'update-zombie-admin-status',
+				UPDATE_ZOMBIE_URL . 'admin/assets/admin-status.js',
+				array(),
+				UPDATE_ZOMBIE_VERSION,
+				true
+			);
+
+			wp_localize_script(
+				'update-zombie-admin-status',
+				'updateZombiePluginStatuses',
+				$this->updates_page_statuses()
+			);
+		}
 	}
 
 	/**
@@ -526,84 +541,105 @@ class Update_Zombie_Admin {
 	}
 
 	/**
-	 * Adds the verdict line under each plugin row on the plugins screen.
+	 * Builds compact status data for each plugin on Dashboard > Updates.
 	 *
-	 * @since 0.1.0
+	 * @since 0.5.0
 	 *
-	 * @return void
+	 * @return array<string, array<string, mixed>> Statuses keyed by plugin file.
 	 */
-	public function register_plugin_rows() {
+	protected function updates_page_statuses() {
 		if ( ! function_exists( 'get_plugin_updates' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/update.php';
 		}
 
-		foreach ( array_keys( (array) get_plugin_updates() ) as $plugin_file ) {
-			add_action( "after_plugin_row_{$plugin_file}", array( $this, 'render_plugin_row' ), 20, 2 );
+		$statuses = array();
+
+		foreach ( (array) get_plugin_updates() as $plugin_file => $plugin_data ) {
+			$update = (object) ( $plugin_data->update ?? array() );
+			$report = $this->plugin_report( $plugin_file, $update );
+			$status = self::report_status( $report );
+
+			$statuses[ $plugin_file ] = array(
+				'label'    => $status['label'],
+				'class'    => $status['class'],
+				'security' => $status['security'],
+				'url'      => $report ? self::report_url( $report->id ) : '',
+			);
 		}
+
+		return $statuses;
 	}
 
 	/**
-	 * Renders one plugin row verdict.
+	 * Finds the report corresponding to one WordPress plugin update offer.
 	 *
-	 * @since 0.1.0
+	 * @since 0.5.0
 	 *
-	 * @param string               $plugin_file Plugin file, relative to the plugins directory.
-	 * @param array<string, mixed> $plugin_data Plugin header data.
-	 * @return void
+	 * @param string $plugin_file Plugin file, relative to the plugins directory.
+	 * @param object $update      WordPress update offer.
+	 * @return object|null
 	 */
-	public function render_plugin_row( $plugin_file, $plugin_data ) {
-		unset( $plugin_data );
-
-		$updates = get_site_transient( 'update_plugins' );
-		$update  = $updates->response[ $plugin_file ] ?? null;
-
-		if ( ! $update || empty( $update->new_version ) ) {
-			return;
+	protected function plugin_report( $plugin_file, $update ) {
+		if ( empty( $update->new_version ) ) {
+			return null;
 		}
 
-		$slug = ! empty( $update->slug ) ? $update->slug : dirname( $plugin_file );
+		$slug = Update_Zombie_Scanner::plugin_slug( $plugin_file, (string) ( $update->slug ?? '' ) );
 
-		if ( '.' === $slug ) {
-			$slug = basename( $plugin_file, '.php' );
-		}
+		return Update_Zombie_Store::find( 'plugin', $slug, $update->new_version );
+	}
 
-		$report = Update_Zombie_Store::find( 'plugin', $slug, $update->new_version );
-
+	/**
+	 * Converts a stored report into the small status used on core screens.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param object|null $report Stored report, or null when not checked.
+	 * @return array{label: string, class: string, security: bool}
+	 */
+	protected static function report_status( $report ) {
 		if ( ! $report ) {
-			return;
+			return array(
+				'label'    => __( 'Not checked', 'update-zombie' ),
+				'class'    => 'neutral',
+				'security' => false,
+			);
 		}
 
-		$columns = 4;
+		if ( Update_Zombie_Store::STATUS_ERROR === $report->status ) {
+			return array(
+				'label'    => __( 'Failed', 'update-zombie' ),
+				'class'    => 'error',
+				'security' => false,
+			);
+		}
 
-		if ( function_exists( '_get_list_table' ) ) {
-			$table = _get_list_table( 'WP_Plugins_List_Table', array( 'screen' => get_current_screen() ) );
-
-			if ( $table ) {
-				$columns = $table->get_column_count();
+		if ( Update_Zombie_Store::STATUS_COMPLETE === $report->status ) {
+			if ( ! empty( $report->is_security ) ) {
+				return array(
+					'label'    => __( 'Security', 'update-zombie' ),
+					'class'    => 'security',
+					'security' => true,
+				);
 			}
-		}
 
-		if ( Update_Zombie_Store::STATUS_COMPLETE !== $report->status ) {
-			$message = sprintf(
-				/* translators: %s: status name. */
-				__( 'Update Zombie: analysis %s.', 'update-zombie' ),
-				$report->status
-			);
-		} else {
-			$message = sprintf(
-				'%s — %s',
-				self::verdict_label( $report->verdict ),
-				$report->headline
+			return array(
+				'label'    => self::verdict_label( $report->verdict ),
+				'class'    => sanitize_key( $report->verdict ? $report->verdict : 'neutral' ),
+				'security' => false,
 			);
 		}
 
-		printf(
-			'<tr class="plugin-update-tr update-zombie-row uz-%1$s"><td colspan="%2$d" class="plugin-update colspanchange"><div class="update-message notice inline notice-alt"><p>%3$s <a href="%4$s">%5$s</a></p></div></td></tr>',
-			esc_attr( $report->verdict ? $report->verdict : $report->status ),
-			(int) $columns,
-			esc_html( $message ),
-			esc_url( self::report_url( $report->id ) ),
-			esc_html__( 'Read the report', 'update-zombie' )
+		$labels = array(
+			Update_Zombie_Store::STATUS_ANALYZING => __( 'Working', 'update-zombie' ),
+			Update_Zombie_Store::STATUS_DIFFED    => __( 'Diffed, awaiting review', 'update-zombie' ),
+			Update_Zombie_Store::STATUS_PENDING   => __( 'Queued', 'update-zombie' ),
+		);
+
+		return array(
+			'label'    => $labels[ $report->status ] ?? $report->status,
+			'class'    => 'pending',
+			'security' => false,
 		);
 	}
 

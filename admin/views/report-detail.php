@@ -173,7 +173,10 @@ $uz_engine   = $payload['engine'] ?? 'ai';
 			<h2><?php esc_html_e( 'Security findings', 'update-zombie' ); ?></h2>
 			<?php foreach ( $uz_findings as $uz_finding ) : ?>
 				<div class="uz-finding uz-finding-security">
-					<h3><?php echo esc_html( $uz_finding['title'] ); ?></h3>
+					<h3>
+						<span class="uz-severity"><?php echo esc_html( strtoupper( (string) ( $uz_finding['severity'] ?? 'unknown' ) ) ); ?></span>
+						<?php echo esc_html( $uz_finding['title'] ); ?>
+					</h3>
 					<p class="uz-file">
 						<code><?php echo esc_html( $uz_finding['file'] ); ?></code>
 						<?php if ( ! empty( $uz_finding['identifier'] ) ) : ?>

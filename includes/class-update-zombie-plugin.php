@@ -39,6 +39,16 @@ class Update_Zombie_Plugin {
 	protected $admin = null;
 
 	/**
+	 * Whether this instance is refreshing WordPress update data.
+	 *
+	 * Prevents our own transient writes from scheduling another immediate scan.
+	 *
+	 * @since 0.5.0
+	 * @var bool
+	 */
+	protected $refreshing_updates = false;
+
+	/**
 	 * Registers everything.
 	 *
 	 * @since 0.1.0
@@ -183,6 +193,10 @@ class Update_Zombie_Plugin {
 	 * @return void
 	 */
 	public function schedule_scan_soon() {
+		if ( $this->refreshing_updates ) {
+			return;
+		}
+
 		if ( ! wp_next_scheduled( self::CRON_SCAN ) || wp_next_scheduled( self::CRON_SCAN ) > time() + ( 2 * MINUTE_IN_SECONDS ) ) {
 			wp_schedule_single_event( time() + MINUTE_IN_SECONDS, self::CRON_SCAN );
 		}
@@ -199,18 +213,48 @@ class Update_Zombie_Plugin {
 		Update_Zombie_Store::maybe_upgrade();
 
 		/*
-		 * Ask WordPress.org ourselves rather than waiting for core's twice-daily
-		 * check. Core only refreshes when an admin screen loads or its own cron
-		 * fires, and a security patch should not sit unnoticed for twelve hours
-		 * because nobody happened to log in.
+		 * Ask WordPress and every registered update provider ourselves rather
+		 * than waiting for core's twice-daily check. A security patch should not
+		 * sit unnoticed because nobody happened to log in.
 		 */
 		if ( ! function_exists( 'wp_update_plugins' ) ) {
 			require_once ABSPATH . 'wp-includes/update.php';
 		}
 
-		wp_update_plugins();
-		wp_update_themes();
-		wp_version_check();
+		/*
+		 * Core normally throttles cron-context plugin and theme checks for two
+		 * hours. Make the cached timestamp appear stale only while the official
+		 * update functions run. The cached response remains intact if a provider
+		 * is unavailable, and premium/private pre_set_site_transient hooks still
+		 * receive and populate WordPress's normal update objects.
+		 */
+		$force_stale = static function ( $updates ) {
+			if ( is_object( $updates ) ) {
+				$updates               = clone $updates;
+				$updates->last_checked = 0;
+			}
+
+			return $updates;
+		};
+
+		$this->refreshing_updates = true;
+
+		try {
+			foreach ( array( 'update_plugins' => 'wp_update_plugins', 'update_themes' => 'wp_update_themes' ) as $transient => $callback ) {
+				$hook = "site_transient_{$transient}";
+				add_filter( $hook, $force_stale, PHP_INT_MAX );
+
+				try {
+					call_user_func( $callback );
+				} finally {
+					remove_filter( $hook, $force_stale, PHP_INT_MAX );
+				}
+			}
+
+			wp_version_check( array(), true );
+		} finally {
+			$this->refreshing_updates = false;
+		}
 
 		$scanner = new Update_Zombie_Scanner();
 		$scanner->scan_all();

@@ -65,20 +65,6 @@ $uz_key_source = Update_Zombie_Credentials::key_source();
 				</td>
 			</tr>
 
-			<?php if ( Update_Zombie_Settings::ENGINE_SIGNALS === $settings['analysis_engine'] ) : ?>
-				<tr>
-					<th scope="row"><?php esc_html_e( 'No-AI auto-install', 'update-zombie' ); ?></th>
-					<td>
-						<label>
-							<input type="checkbox" name="<?php echo esc_attr( $uz_name ); ?>[signals_auto_security]" value="1" <?php checked( $settings['signals_auto_security'] ); ?>>
-							<?php esc_html_e( 'Let no-AI verdicts install security fixes automatically', 'update-zombie' ); ?>
-						</label>
-						<p class="description uz-warning">
-							<?php esc_html_e( 'Off by default, and worth leaving off. Without AI, a "security fix" means the changelog said so and the diff added some escaping or capability checks nearby — good evidence, but nothing has checked that the fix is real or complete. With this off, no-AI verdicts still report and notify; they just do not install anything on their own.', 'update-zombie' ); ?>
-						</p>
-					</td>
-				</tr>
-			<?php endif; ?>
 		</table>
 
 		<h2><?php esc_html_e( 'AI provider', 'update-zombie' ); ?></h2>
@@ -187,13 +173,13 @@ $uz_key_source = Update_Zombie_Credentials::key_source();
 						<label class="uz-radio">
 							<input type="radio" name="<?php echo esc_attr( $uz_name ); ?>[mode]" value="<?php echo esc_attr( Update_Zombie_Settings::MODE_GUARDED ); ?>" <?php checked( $settings['mode'], Update_Zombie_Settings::MODE_GUARDED ); ?>>
 							<strong><?php esc_html_e( 'Guarded', 'update-zombie' ); ?></strong>
-							<span class="description"><?php esc_html_e( 'Install security fixes automatically. Hold back anything judged questionable or shit until you approve it. Everything else follows your normal WordPress settings.', 'update-zombie' ); ?></span>
+							<span class="description"><?php esc_html_e( 'Install high-impact security fixes automatically. Hold back anything judged questionable or shit until you approve it. Lower-impact fixes and everything else follow your normal WordPress settings.', 'update-zombie' ); ?></span>
 						</label>
 
 						<label class="uz-radio">
 							<input type="radio" name="<?php echo esc_attr( $uz_name ); ?>[mode]" value="<?php echo esc_attr( Update_Zombie_Settings::MODE_AUTOPILOT ); ?>" <?php checked( $settings['mode'], Update_Zombie_Settings::MODE_AUTOPILOT ); ?>>
 							<strong><?php esc_html_e( 'Autopilot', 'update-zombie' ); ?></strong>
-							<span class="description"><?php esc_html_e( 'Install security fixes and updates judged good. Hold back questionable and shit ones. The most hands-off setting, and the one that trusts the model most.', 'update-zombie' ); ?></span>
+							<span class="description"><?php esc_html_e( 'Install high-impact security fixes and updates judged good. Hold back questionable and shit ones. The most hands-off setting, and the one that trusts the model most.', 'update-zombie' ); ?></span>
 						</label>
 					</fieldset>
 
@@ -210,7 +196,7 @@ $uz_key_source = Update_Zombie_Credentials::key_source();
 				<td>
 					<input type="number" min="0" max="100" id="uz-security-confidence" name="<?php echo esc_attr( $uz_name ); ?>[security_confidence]" value="<?php echo esc_attr( (string) $settings['security_confidence'] ); ?>" class="small-text">
 					<span>%</span>
-					<p class="description"><?php esc_html_e( 'A security fix installs automatically only when the model is at least this confident. Lower means more gets installed unattended; higher means more waits for you.', 'update-zombie' ); ?></p>
+					<p class="description"><?php esc_html_e( 'Only a high- or critical-impact security fix can install automatically, and only when the model is at least this confident about that same finding. Lower-impact or uncertain fixes wait for your normal WordPress policy.', 'update-zombie' ); ?></p>
 				</td>
 			</tr>
 		</table>

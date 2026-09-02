@@ -58,7 +58,6 @@ class Update_Zombie_Plugin {
 	public function init() {
 		add_filter( 'cron_schedules', array( $this, 'register_schedule' ) ); // phpcs:ignore WordPress.WP.CronInterval.ChangeDetected -- Five minutes is the queue drain interval; each run processes at most one item.
 
-		add_action( 'init', array( $this, 'load_textdomain' ) );
 		add_action( 'admin_init', array( 'Update_Zombie_Store', 'maybe_upgrade' ) );
 
 		add_filter( 'wp_ai_client_default_request_timeout', array( $this, 'filter_request_timeout' ) );
@@ -150,17 +149,6 @@ class Update_Zombie_Plugin {
 		 * @param int $timeout Timeout in seconds.
 		 */
 		return (int) apply_filters( 'update_zombie_request_timeout', $timeout );
-	}
-
-	/**
-	 * Loads translations.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @return void
-	 */
-	public function load_textdomain() {
-		load_plugin_textdomain( 'update-zombie', false, dirname( plugin_basename( UPDATE_ZOMBIE_FILE ) ) . '/languages' );
 	}
 
 	/**

@@ -180,7 +180,7 @@ class Update_Zombie_Enforcer {
 		// this bad is a contradiction worth a human's attention; "questionable"
 		// deliberately does not veto, so genuine fixes still land promptly with
 		// their concerns reported alongside.
-		if ( 'shit' === $report->verdict ) {
+		if ( 'bad' === $report->verdict ) {
 			return 'hold';
 		}
 
@@ -193,7 +193,7 @@ class Update_Zombie_Enforcer {
 			return 'apply';
 		}
 
-		if ( in_array( $report->verdict, array( 'shit', 'questionable' ), true ) ) {
+		if ( in_array( $report->verdict, array( 'bad', 'questionable' ), true ) ) {
 			return 'hold';
 		}
 

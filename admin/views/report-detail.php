@@ -10,12 +10,12 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$uz_stats    = $payload['stats'] ?? array();
-$uz_concerns = $payload['concerns'] ?? array();
-$uz_findings = $payload['security_findings'] ?? array();
-$uz_breaking = $payload['breaking_changes'] ?? array();
-$uz_signals  = Update_Zombie_Store::signals( $report );
-$uz_engine   = $payload['engine'] ?? 'ai';
+$update_zombie_stats    = $payload['stats'] ?? array();
+$update_zombie_concerns = $payload['concerns'] ?? array();
+$update_zombie_findings = $payload['security_findings'] ?? array();
+$update_zombie_breaking = $payload['breaking_changes'] ?? array();
+$update_zombie_signals  = Update_Zombie_Store::signals( $report );
+$update_zombie_engine   = $payload['engine'] ?? 'ai';
 ?>
 <div class="wrap update-zombie-wrap update-zombie-report">
 	<h1 class="wp-heading-inline">
@@ -53,15 +53,15 @@ $uz_engine   = $payload['engine'] ?? 'ai';
 		</div>
 	<?php elseif ( Update_Zombie_Store::STATUS_COMPLETE !== $report->status ) : ?>
 		<?php
-		$uz_phase   = Update_Zombie_Admin::phase_for( $report );
-		$uz_started = $report->created_at ? strtotime( $report->created_at . ' UTC' ) : time();
+		$update_zombie_phase   = Update_Zombie_Admin::phase_for( $report );
+		$update_zombie_started = $report->created_at ? strtotime( $report->created_at . ' UTC' ) : time();
 		?>
-		<div class="uz-progress" id="uz-progress" data-report="<?php echo (int) $report->id; ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'update_zombie_status' ) ); ?>" data-phase="<?php echo esc_attr( $uz_phase['phase'] ); ?>">
+		<div class="uz-progress" id="uz-progress" data-report="<?php echo (int) $report->id; ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'update_zombie_status' ) ); ?>" data-phase="<?php echo esc_attr( $update_zombie_phase['phase'] ); ?>">
 			<div class="uz-progress-head">
 				<span class="uz-spinner" aria-hidden="true"></span>
 				<div>
 					<h2><?php esc_html_e( 'Analysing this update', 'update-zombie' ); ?></h2>
-					<p class="uz-progress-label"><?php echo esc_html( $uz_phase['label'] ); ?></p>
+					<p class="uz-progress-label"><?php echo esc_html( $update_zombie_phase['label'] ); ?></p>
 				</div>
 			</div>
 			<p class="uz-progress-eta">
@@ -70,18 +70,18 @@ $uz_engine   = $payload['engine'] ?? 'ai';
 					sprintf(
 						/* translators: %d: number of minutes. */
 						__( 'This usually takes two to five minutes, and up to %d for a large update. The work runs in the background — you can leave this page and come back, or just wait; it refreshes itself.', 'update-zombie' ),
-						(int) $uz_phase['estimate']
+						(int) $update_zombie_phase['estimate']
 					)
 				);
 				?>
 			</p>
 			<p class="uz-progress-steps">
-				<span class="uz-step <?php echo in_array( $uz_phase['phase'], array( 'diffing', 'waiting_review', 'reviewing' ), true ) ? 'is-done' : ( 'queued' === $uz_phase['phase'] ? 'is-current' : '' ); ?>"><?php esc_html_e( 'Queued', 'update-zombie' ); ?></span>
-				<span class="uz-step <?php echo in_array( $uz_phase['phase'], array( 'waiting_review', 'reviewing' ), true ) ? 'is-done' : ( 'diffing' === $uz_phase['phase'] ? 'is-current' : '' ); ?>"><?php esc_html_e( 'Download & diff', 'update-zombie' ); ?></span>
-				<span class="uz-step <?php echo 'reviewing' === $uz_phase['phase'] ? 'is-current' : ''; ?>"><?php esc_html_e( 'AI review', 'update-zombie' ); ?></span>
+				<span class="uz-step <?php echo in_array( $update_zombie_phase['phase'], array( 'diffing', 'waiting_review', 'reviewing' ), true ) ? 'is-done' : ( 'queued' === $update_zombie_phase['phase'] ? 'is-current' : '' ); ?>"><?php esc_html_e( 'Queued', 'update-zombie' ); ?></span>
+				<span class="uz-step <?php echo in_array( $update_zombie_phase['phase'], array( 'waiting_review', 'reviewing' ), true ) ? 'is-done' : ( 'diffing' === $update_zombie_phase['phase'] ? 'is-current' : '' ); ?>"><?php esc_html_e( 'Download & diff', 'update-zombie' ); ?></span>
+				<span class="uz-step <?php echo 'reviewing' === $update_zombie_phase['phase'] ? 'is-current' : ''; ?>"><?php esc_html_e( 'AI review', 'update-zombie' ); ?></span>
 				<span class="uz-step"><?php esc_html_e( 'Verdict', 'update-zombie' ); ?></span>
 			</p>
-			<?php if ( empty( $uz_signals ) ) : ?>
+			<?php if ( empty( $update_zombie_signals ) ) : ?>
 				<p class="uz-muted"><?php esc_html_e( 'The "What changed" facts appear here as soon as the diff is done, before the AI has said anything.', 'update-zombie' ); ?></p>
 			<?php endif; ?>
 		</div>
@@ -114,12 +114,12 @@ $uz_engine   = $payload['engine'] ?? 'ai';
 					<?php echo esc_html( Update_Zombie_Admin::verdict_label( $report->verdict ) ); ?>
 				</span>
 				<?php
-				$uz_state = Update_Zombie_Reports_Table::installed_state( $report );
+				$update_zombie_state = Update_Zombie_Reports_Table::installed_state( $report );
 
-				if ( $uz_state['updated'] ) :
-					$uz_auto = in_array( $report->decision, array( Update_Zombie_Store::DECISION_AUTO, Update_Zombie_Store::DECISION_SCHEDULED ), true );
+				if ( $update_zombie_state['updated'] ) :
+					$update_zombie_auto = in_array( $report->decision, array( Update_Zombie_Store::DECISION_AUTO, Update_Zombie_Store::DECISION_SCHEDULED ), true );
 					?>
-					<span class="uz-badge uz-badge-applied">&#10003; <?php echo esc_html( $uz_auto ? __( 'Automatically updated', 'update-zombie' ) : __( 'Updated', 'update-zombie' ) ); ?></span>
+					<span class="uz-badge uz-badge-applied">&#10003; <?php echo esc_html( $update_zombie_auto ? __( 'Automatically updated', 'update-zombie' ) : __( 'Updated', 'update-zombie' ) ); ?></span>
 				<?php endif; ?>
 				<h2><?php echo esc_html( $report->headline ); ?></h2>
 			</div>
@@ -151,11 +151,11 @@ $uz_engine   = $payload['engine'] ?? 'ai';
 					<dt><?php esc_html_e( 'Action taken', 'update-zombie' ); ?></dt>
 					<dd>
 						<?php
-						$uz_state = Update_Zombie_Reports_Table::installed_state( $report );
+						$update_zombie_state = Update_Zombie_Reports_Table::installed_state( $report );
 
-						if ( $uz_state['updated'] ) {
-							$uz_auto = in_array( $report->decision, array( Update_Zombie_Store::DECISION_AUTO, Update_Zombie_Store::DECISION_SCHEDULED ), true );
-							echo '<span class="uz-fact-ok">&#10003; ' . esc_html( $uz_auto ? __( 'Automatically updated', 'update-zombie' ) : __( 'Updated', 'update-zombie' ) ) . '</span>';
+						if ( $update_zombie_state['updated'] ) {
+							$update_zombie_auto = in_array( $report->decision, array( Update_Zombie_Store::DECISION_AUTO, Update_Zombie_Store::DECISION_SCHEDULED ), true );
+							echo '<span class="uz-fact-ok">&#10003; ' . esc_html( $update_zombie_auto ? __( 'Automatically updated', 'update-zombie' ) : __( 'Updated', 'update-zombie' ) ) . '</span>';
 						} else {
 							echo esc_html( Update_Zombie_Admin::decision_label( $report->decision ) );
 							echo ' ' . Update_Zombie_Reports_Table::update_link( $report ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped inside the helper.
@@ -189,50 +189,50 @@ $uz_engine   = $payload['engine'] ?? 'ai';
 			</div>
 		<?php endif; ?>
 
-		<?php if ( $uz_findings ) : ?>
+		<?php if ( $update_zombie_findings ) : ?>
 			<h2><?php esc_html_e( 'Security findings', 'update-zombie' ); ?></h2>
-			<?php foreach ( $uz_findings as $uz_finding ) : ?>
+			<?php foreach ( $update_zombie_findings as $update_zombie_finding ) : ?>
 				<div class="uz-finding uz-finding-security">
 					<h3>
-						<span class="uz-severity"><?php echo esc_html( strtoupper( (string) ( $uz_finding['severity'] ?? 'unknown' ) ) ); ?></span>
-						<?php echo esc_html( $uz_finding['title'] ); ?>
+						<span class="uz-severity"><?php echo esc_html( strtoupper( (string) ( $update_zombie_finding['severity'] ?? 'unknown' ) ) ); ?></span>
+						<?php echo esc_html( $update_zombie_finding['title'] ); ?>
 					</h3>
 					<p class="uz-file">
-						<code><?php echo esc_html( $uz_finding['file'] ); ?></code>
-						<?php if ( ! empty( $uz_finding['identifier'] ) ) : ?>
-							<span class="uz-cve"><?php echo esc_html( $uz_finding['identifier'] ); ?></span>
+						<code><?php echo esc_html( $update_zombie_finding['file'] ); ?></code>
+						<?php if ( ! empty( $update_zombie_finding['identifier'] ) ) : ?>
+							<span class="uz-cve"><?php echo esc_html( $update_zombie_finding['identifier'] ); ?></span>
 						<?php endif; ?>
 					</p>
-					<p><?php echo esc_html( $uz_finding['detail'] ); ?></p>
-					<?php if ( ! empty( $uz_finding['excerpt'] ) ) : ?>
-						<pre class="uz-excerpt"><?php echo esc_html( $uz_finding['excerpt'] ); ?></pre>
+					<p><?php echo esc_html( $update_zombie_finding['detail'] ); ?></p>
+					<?php if ( ! empty( $update_zombie_finding['excerpt'] ) ) : ?>
+						<pre class="uz-excerpt"><?php echo esc_html( $update_zombie_finding['excerpt'] ); ?></pre>
 					<?php endif; ?>
 				</div>
 			<?php endforeach; ?>
 		<?php endif; ?>
 
-		<?php if ( $uz_concerns ) : ?>
+		<?php if ( $update_zombie_concerns ) : ?>
 			<h2><?php esc_html_e( 'Concerns', 'update-zombie' ); ?></h2>
-			<?php foreach ( $uz_concerns as $uz_concern ) : ?>
-				<div class="uz-finding uz-severity-<?php echo esc_attr( $uz_concern['severity'] ); ?>">
+			<?php foreach ( $update_zombie_concerns as $update_zombie_concern ) : ?>
+				<div class="uz-finding uz-severity-<?php echo esc_attr( $update_zombie_concern['severity'] ); ?>">
 					<h3>
-						<span class="uz-severity"><?php echo esc_html( strtoupper( $uz_concern['severity'] ) ); ?></span>
-						<?php echo esc_html( $uz_concern['title'] ); ?>
+						<span class="uz-severity"><?php echo esc_html( strtoupper( $update_zombie_concern['severity'] ) ); ?></span>
+						<?php echo esc_html( $update_zombie_concern['title'] ); ?>
 					</h3>
-					<p class="uz-file"><code><?php echo esc_html( $uz_concern['file'] ); ?></code></p>
-					<p><?php echo esc_html( $uz_concern['detail'] ); ?></p>
-					<?php if ( ! empty( $uz_concern['excerpt'] ) ) : ?>
-						<pre class="uz-excerpt"><?php echo esc_html( $uz_concern['excerpt'] ); ?></pre>
+					<p class="uz-file"><code><?php echo esc_html( $update_zombie_concern['file'] ); ?></code></p>
+					<p><?php echo esc_html( $update_zombie_concern['detail'] ); ?></p>
+					<?php if ( ! empty( $update_zombie_concern['excerpt'] ) ) : ?>
+						<pre class="uz-excerpt"><?php echo esc_html( $update_zombie_concern['excerpt'] ); ?></pre>
 					<?php endif; ?>
 				</div>
 			<?php endforeach; ?>
 		<?php endif; ?>
 
-		<?php if ( $uz_breaking ) : ?>
+		<?php if ( $update_zombie_breaking ) : ?>
 			<h2><?php esc_html_e( 'Possible breaking changes', 'update-zombie' ); ?></h2>
 			<ul class="uz-list">
-				<?php foreach ( $uz_breaking as $uz_change ) : ?>
-					<li><?php echo esc_html( $uz_change ); ?></li>
+				<?php foreach ( $update_zombie_breaking as $update_zombie_change ) : ?>
+					<li><?php echo esc_html( $update_zombie_change ); ?></li>
 				<?php endforeach; ?>
 			</ul>
 		<?php endif; ?>
@@ -244,10 +244,10 @@ $uz_engine   = $payload['engine'] ?? 'ai';
 				sprintf(
 					/* translators: 1: files changed, 2: files included, 3: files omitted, 4: files skipped. */
 					__( '%1$d files changed. %2$d were sent for review, %3$d were left out to stay inside the budget, and %4$d were skipped as binary or oversized.', 'update-zombie' ),
-					(int) ( $uz_stats['files_changed'] ?? 0 ),
-					(int) ( $uz_stats['files_included'] ?? 0 ),
-					(int) ( $uz_stats['files_omitted'] ?? 0 ),
-					(int) ( $uz_stats['skipped'] ?? 0 )
+					(int) ( $update_zombie_stats['files_changed'] ?? 0 ),
+					(int) ( $update_zombie_stats['files_included'] ?? 0 ),
+					(int) ( $update_zombie_stats['files_omitted'] ?? 0 ),
+					(int) ( $update_zombie_stats['skipped'] ?? 0 )
 				)
 			);
 			?>
@@ -263,13 +263,13 @@ $uz_engine   = $payload['engine'] ?? 'ai';
 					</tr>
 				</thead>
 				<tbody>
-					<?php foreach ( $payload['files'] as $uz_file ) : ?>
+					<?php foreach ( $payload['files'] as $update_zombie_file ) : ?>
 						<tr>
-							<td><code><?php echo esc_html( $uz_file['path'] ); ?></code></td>
-							<td><?php echo esc_html( $uz_file['change'] ); ?></td>
+							<td><code><?php echo esc_html( $update_zombie_file['path'] ); ?></code></td>
+							<td><?php echo esc_html( $update_zombie_file['change'] ); ?></td>
 							<td>
-								<span class="uz-adds">+<?php echo (int) $uz_file['adds']; ?></span>
-								<span class="uz-dels">−<?php echo (int) $uz_file['dels']; ?></span>
+								<span class="uz-adds">+<?php echo (int) $update_zombie_file['adds']; ?></span>
+								<span class="uz-dels">−<?php echo (int) $update_zombie_file['dels']; ?></span>
 							</td>
 						</tr>
 					<?php endforeach; ?>
@@ -288,7 +288,7 @@ $uz_engine   = $payload['engine'] ?? 'ai';
 		<?php endif; ?>
 
 		<p class="uz-disclaimer">
-			<?php if ( 'signals' === $uz_engine ) : ?>
+			<?php if ( 'signals' === $update_zombie_engine ) : ?>
 				<?php esc_html_e( 'This verdict was produced without AI, by corroborating the changelog against a pattern scan of the diff. It can tell you that security checks were added; it cannot tell you whether they are correct or complete. The "What changed" section above is exact either way.', 'update-zombie' ); ?>
 			<?php else : ?>
 				<?php esc_html_e( 'This verdict came from an AI reading a code diff. It can be wrong, and it only saw the files listed above. Treat it as a second opinion, not a guarantee. The "What changed" section above is computed, not generated, and is exact.', 'update-zombie' ); ?>

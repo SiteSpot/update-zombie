@@ -8,7 +8,7 @@ Stable tag: 0.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Don't let all these updates turn you into a zombie. Update Zombie reads each update's code diff and tells you whether it is a security fix, a good update, or a shit one.
+Reads the code in every WordPress update, installs the security fixes on its own, and leaves the rest to your settings. Stop panicking about updates.
 
 == Description ==
 
@@ -28,7 +28,7 @@ When WordPress offers an update, Update Zombie downloads the package to a tempor
 **Three modes, your choice**
 
 * **Advisory** (default) — reports only. WordPress installs exactly what it would have installed anyway. A wrong verdict can never strand you on a vulnerable version.
-* **Guarded** — high- or critical-impact security fixes install automatically; lower-impact fixes follow your normal settings, and updates judged questionable or shit are held back until you approve them.
+* **Guarded** — high- or critical-impact security fixes install automatically; lower-impact fixes follow your normal settings, and updates judged questionable or worth avoiding are held back until you approve them.
 * **Autopilot** — high- or critical-impact security fixes and updates judged good install automatically; lower-impact fixes follow your normal settings, and bad ones are held back.
 
 Holding an update back never blocks you from installing it by hand. Guarded and Autopilot only change what happens unattended.

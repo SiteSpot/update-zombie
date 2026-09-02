@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 class Update_Zombie_Store {
 
 	const DB_VERSION_OPTION = 'update_zombie_db_version';
-	const DB_VERSION        = '5';
+	const DB_VERSION        = '6';
 
 	const STATUS_PENDING   = 'pending';
 	const STATUS_ANALYZING = 'analyzing';
@@ -116,6 +116,11 @@ class Update_Zombie_Store {
 
 		dbDelta( $events_sql );
 
+		// 0.6.0 renamed the harshest verdict. Rows judged before then carry
+		// the old key, which no longer has a label or a colour.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+		$wpdb->query( $wpdb->prepare( "UPDATE {$table} SET verdict = %s WHERE verdict = %s", 'bad', 'shit' ) );
+
 		update_option( self::DB_VERSION_OPTION, self::DB_VERSION );
 	}
 
@@ -212,7 +217,7 @@ class Update_Zombie_Store {
 
 		$table = self::table();
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		return $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT * FROM {$table} WHERE item_type = %s AND item_slug = %s AND new_version = %s LIMIT 1",
@@ -236,7 +241,7 @@ class Update_Zombie_Store {
 
 		$table = self::table();
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ) );
 	}
 
@@ -282,7 +287,7 @@ class Update_Zombie_Store {
 		 * gets downloaded and diffed, a diffed row gets analysed. Diffed rows
 		 * are taken first so items finish rather than piling up half-done.
 		 */
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT * FROM {$table} WHERE status IN ( %s, %s ) AND attempts < 3
@@ -300,7 +305,7 @@ class Update_Zombie_Store {
 
 		$claimed_from = $row->status;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$claimed = $wpdb->query(
 			$wpdb->prepare(
 				"UPDATE {$table} SET status = %s, attempts = attempts + 1 WHERE id = %d AND status = %s",
@@ -333,7 +338,7 @@ class Update_Zombie_Store {
 
 		$table = self::table();
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE status = %s", $status ) );
 	}
 
@@ -413,7 +418,7 @@ class Update_Zombie_Store {
 
 		$count_sql = "SELECT COUNT(*) FROM {$table} WHERE {$where_sql}";
 
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared
 		$total = (int) ( $params ? $wpdb->get_var( $wpdb->prepare( $count_sql, $params ) ) : $wpdb->get_var( $count_sql ) );
 
 		$list_sql    = "SELECT * FROM {$table} WHERE {$where_sql} ORDER BY {$orderby} {$order} LIMIT %d OFFSET %d";
@@ -477,7 +482,7 @@ class Update_Zombie_Store {
 
 		$table = self::table();
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$rows = $wpdb->get_results( "SELECT id, item_type, item_slug, item_file, new_version FROM {$table} WHERE applied_at IS NULL" );
 
 		$marked = 0;
@@ -507,7 +512,7 @@ class Update_Zombie_Store {
 
 		$table = self::table();
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		return (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM {$table} WHERE applied_at IS NULL AND status = %s AND ( is_security = 1 OR decision = %s )",
@@ -531,7 +536,7 @@ class Update_Zombie_Store {
 		$table  = self::table();
 		$cutoff = gmdate( 'Y-m-d H:i:s', time() - ( max( 1, (int) $days ) * DAY_IN_SECONDS ) );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		return (array) $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT id, item_name, item_slug, old_version, new_version, is_security, applied_at FROM {$table}
@@ -559,7 +564,7 @@ class Update_Zombie_Store {
 
 		$events = self::events_table();
 
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$removed = (int) $wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE created_at < %s", $cutoff ) );
 
 		$wpdb->query( $wpdb->prepare( "DELETE FROM {$events} WHERE created_at < %s", $cutoff ) );
@@ -596,7 +601,7 @@ class Update_Zombie_Store {
 		$table  = self::table();
 		$events = self::events_table();
 
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$wpdb->query( "DROP TABLE IF EXISTS {$table}" );
 		$wpdb->query( "DROP TABLE IF EXISTS {$events}" );
 		// phpcs:enable

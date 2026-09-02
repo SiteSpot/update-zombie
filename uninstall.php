@@ -23,6 +23,6 @@ $update_zombie_tables = array(
 );
 
 foreach ( $update_zombie_tables as $update_zombie_table ) {
-	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 	$wpdb->query( "DROP TABLE IF EXISTS {$update_zombie_table}" );
 }

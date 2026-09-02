@@ -27,7 +27,7 @@ class Update_Zombie_Analyzer {
 	 * @since 0.1.0
 	 * @var string[]
 	 */
-	const VERDICTS = array( 'security', 'good', 'neutral', 'questionable', 'shit' );
+	const VERDICTS = array( 'security', 'good', 'neutral', 'questionable', 'bad' );
 
 	/**
 	 * Recommendations the model is allowed to return.
@@ -781,7 +781,7 @@ concerns: anything a careful admin should look at before installing, each with a
 
 breaking_changes: anything that could break a working site on upgrade — removed functions, hooks or features, raised minimum versions, changed data formats, renamed options.
 
-verdict: security if primarily a security fix; good for real, competent improvements; neutral for housekeeping; questionable if there is something to look at first; shit if actively bad — introduces vulnerabilities, backdoor-shaped code, nagware, phones home, or a bloated regression.
+verdict: security if primarily a security fix; good for real, competent improvements; neutral for housekeeping; questionable if there is something to look at first; bad if it should be avoided — introduces vulnerabilities, backdoor-shaped code, nagware, phones home, or is a bloated regression.
 
 recommendation: apply_now, apply, review, or hold.
 

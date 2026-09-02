@@ -175,10 +175,11 @@ class Update_Zombie_Admin {
 
 		$target = $map[ $page ];
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Preserving a report ID in a redirect.
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Preserving a report ID in a redirect; read-only.
 		if ( isset( $_GET['report'] ) ) {
 			$target = add_query_arg( 'report', absint( $_GET['report'] ), $target );
 		}
+		// phpcs:enable
 
 		wp_safe_redirect( $target, 301 );
 		exit;
@@ -592,7 +593,7 @@ class Update_Zombie_Admin {
 		$flagged = array();
 
 		foreach ( $result['items'] as $row ) {
-			if ( Update_Zombie_Store::DECISION_HELD === $row->decision || 'shit' === $row->verdict ) {
+			if ( Update_Zombie_Store::DECISION_HELD === $row->decision || 'bad' === $row->verdict ) {
 				$flagged[] = $row;
 			}
 		}
@@ -823,7 +824,7 @@ class Update_Zombie_Admin {
 			'good'         => __( 'Good update', 'update-zombie' ),
 			'neutral'      => __( 'Housekeeping', 'update-zombie' ),
 			'questionable' => __( 'Questionable', 'update-zombie' ),
-			'shit'         => __( 'Shit update', 'update-zombie' ),
+			'bad'          => __( 'Avoid', 'update-zombie' ),
 		);
 
 		return $labels[ $verdict ] ?? __( 'Not judged yet', 'update-zombie' );

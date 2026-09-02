@@ -103,7 +103,7 @@ class Update_Zombie_OpenRouter_Directory implements ModelMetadataDirectoryInterf
 	public function getModelMetadata( string $modelId ): ModelMetadata { // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid, WordPress.NamingConventions.ValidVariableName.VariableNotSnakeCase -- Implements an SDK interface.
 		if ( ! $this->hasModelMetadata( $modelId ) ) {
 			throw new InvalidArgumentException(
-				sprintf( 'Unknown OpenRouter model ID "%s".', $modelId )
+				sprintf( 'Unknown OpenRouter model ID "%s".', esc_html( $modelId ) )
 			);
 		}
 

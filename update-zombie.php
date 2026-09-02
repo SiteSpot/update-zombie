@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Update Zombie
  * Plugin URI:        https://sitespot.dev/updatezombie
- * Description:       Don't let all these updates turn you into a zombie. Downloads each pending update, diffs it against what you're running, and has an AI judge whether it's a security fix, a good update, or a shit one.
+ * Description:       Don't let all these updates turn you into a zombie. Downloads each pending update, diffs it against what you're running, and has an AI judge whether it's a security fix, a good update, or one to avoid.
  * Version:           0.6.0
  * Requires at least: 7.0
  * Requires PHP:      7.4
@@ -11,7 +11,6 @@
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       update-zombie
- * Domain Path:       /languages
  *
  * @package Update_Zombie
  */

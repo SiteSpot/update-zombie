@@ -14,6 +14,8 @@ defined( 'ABSPATH' ) || exit;
 
 	<hr class="wp-header-end">
 
+	<?php Update_Zombie_Admin::render_tabs(); ?>
+
 	<p class="description">
 		<?php esc_html_e( 'Everything Update Zombie did, including while you were not looking: updates spotted, analyses run, verdicts reached, and anything installed or held back.', 'update-zombie' ); ?>
 	</p>
@@ -21,7 +23,8 @@ defined( 'ABSPATH' ) || exit;
 	<?php $table->views(); ?>
 
 	<form method="get">
-		<input type="hidden" name="page" value="<?php echo esc_attr( Update_Zombie_Admin::PAGE_ACTIVITY ); ?>">
+		<input type="hidden" name="page" value="<?php echo esc_attr( Update_Zombie_Admin::PAGE_REPORTS ); ?>">
+		<input type="hidden" name="tab" value="activity">
 		<?php
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only list filter.
 		if ( isset( $_GET['event'] ) ) {

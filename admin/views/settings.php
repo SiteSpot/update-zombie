@@ -15,7 +15,9 @@ $uz_schedules  = wp_get_schedules();
 $uz_key_source = Update_Zombie_Credentials::key_source();
 ?>
 <div class="wrap update-zombie-wrap">
-	<h1><?php esc_html_e( 'Update Zombie Settings', 'update-zombie' ); ?></h1>
+	<h1><?php esc_html_e( 'Update Zombie', 'update-zombie' ); ?></h1>
+
+	<?php Update_Zombie_Admin::render_tabs(); ?>
 
 	<?php if ( is_wp_error( $availability ) ) : ?>
 		<div class="notice notice-error">

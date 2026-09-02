@@ -452,3 +452,180 @@
 	color: #12457a;
 	font-weight: 600;
 }
+
+/* Version state and outcome under the version numbers */
+
+.uz-ver-current {
+	font-weight: 700;
+	color: #1d2327;
+}
+
+.uz-ver-updated {
+	color: #005a1f;
+	background: #edfaef;
+	border: 1px solid #68de7c;
+}
+
+.uz-status {
+	display: inline-block;
+	margin-top: 6px;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 11px;
+	line-height: 1.7;
+	border: 1px solid transparent;
+}
+
+.uz-status-ok {
+	background: #edfaef;
+	border-color: #00a32a;
+	color: #005a1f;
+	font-weight: 600;
+}
+
+.uz-status-info {
+	background: #f0f6fc;
+	border-color: #72aee6;
+	color: #12457a;
+}
+
+.uz-status-warn {
+	background: #fcf9e8;
+	border-color: #dba617;
+	color: #7a5c00;
+	font-weight: 600;
+}
+
+.uz-status-muted {
+	background: #f6f7f7;
+	border-color: #dcdcde;
+	color: #646970;
+}
+
+.uz-badge-applied {
+	background: #00a32a;
+	border-color: #00a32a;
+	color: #fff;
+	margin-left: 4px;
+}
+
+/* Verdict card: title first, four fact boxes, then the summary */
+
+.uz-verdict-card {
+	background: #f6f7f7;
+}
+
+.uz-verdict-headline h2 {
+	font-size: 20px;
+	line-height: 1.35;
+}
+
+.uz-facts {
+	display: grid;
+	grid-template-columns: repeat( 4, minmax( 0, 1fr ) );
+	gap: 12px;
+	margin: 16px 0 0;
+	padding: 0;
+	border-top: 0;
+}
+
+.uz-facts > div {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 12px 14px;
+	box-shadow: 0 1px 1px rgba( 0, 0, 0, 0.04 );
+}
+
+.uz-facts dd {
+	font-size: 15px;
+	line-height: 1.4;
+}
+
+.uz-fact-ok {
+	color: #005a1f;
+}
+
+.uz-summary {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 14px 16px;
+	margin-top: 12px;
+}
+
+@media ( max-width: 960px ) {
+	.uz-facts {
+		grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
+	}
+}
+
+.uz-update-link {
+	display: inline-block;
+	margin: 6px 0 0 6px;
+	font-size: 12px;
+	font-weight: 600;
+	text-decoration: none;
+}
+
+/* The brag line: what the zombie did on its own, expandable */
+
+.uz-brag {
+	background: #edfaef;
+	border: 1px solid #68de7c;
+	border-left: 4px solid #00a32a;
+	border-radius: 3px;
+	padding: 10px 14px;
+	margin: 12px 0 8px;
+	max-width: 900px;
+}
+
+.uz-brag summary {
+	cursor: pointer;
+	font-size: 14px;
+	color: #1d2327;
+	list-style: none;
+}
+
+.uz-brag summary::-webkit-details-marker {
+	display: none;
+}
+
+.uz-brag-tick {
+	display: inline-block;
+	width: 20px;
+	height: 20px;
+	line-height: 20px;
+	text-align: center;
+	border-radius: 50%;
+	background: #00a32a;
+	color: #fff;
+	font-size: 12px;
+	font-weight: 700;
+	margin-right: 6px;
+}
+
+.uz-brag-more {
+	margin-left: 8px;
+	color: #2271b1;
+	text-decoration: underline;
+	font-size: 12px;
+}
+
+.uz-brag[open] .uz-brag-more {
+	display: none;
+}
+
+.uz-brag ul {
+	margin: 10px 0 2px 26px;
+	list-style: disc;
+}
+
+.uz-brag li {
+	margin: 0 0 4px;
+	font-size: 13px;
+}
+
+.uz-brag li code {
+	font-size: 12px;
+}

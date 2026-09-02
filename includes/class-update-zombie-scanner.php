@@ -36,6 +36,9 @@ class Update_Zombie_Scanner {
 			$created += $this->scan_core();
 		}
 
+		// Notice updates that landed by other means since the last scan.
+		Update_Zombie_Store::reconcile_applied();
+
 		if ( $created ) {
 			Update_Zombie_Log::record(
 				Update_Zombie_Log::SCAN,
@@ -326,6 +329,42 @@ class Update_Zombie_Scanner {
 					return (string) $packages[ $key ];
 				}
 			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * Returns the version of an item currently on disk.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param object $report Report row (needs item_type, item_file, item_slug).
+	 * @return string Version string, or an empty string when not installed.
+	 */
+	public static function installed_version( $report ) {
+		static $plugins = null;
+
+		if ( 'plugin' === $report->item_type ) {
+			if ( null === $plugins ) {
+				if ( ! function_exists( 'get_plugins' ) ) {
+					require_once ABSPATH . 'wp-admin/includes/plugin.php';
+				}
+
+				$plugins = get_plugins();
+			}
+
+			return (string) ( $plugins[ $report->item_file ]['Version'] ?? '' );
+		}
+
+		if ( 'theme' === $report->item_type ) {
+			$theme = wp_get_theme( $report->item_slug );
+
+			return $theme->exists() ? (string) $theme->get( 'Version' ) : '';
+		}
+
+		if ( 'core' === $report->item_type ) {
+			return self::current_core_version();
 		}
 
 		return '';

@@ -397,11 +397,14 @@ class Update_Zombie_Enforcer {
 	 * @return void
 	 */
 	protected function mark_applied( $type, $slug ) {
+		// Search by slug rather than taking the newest few rows of this type:
+		// with dozens of plugins queued, the one just installed is often not
+		// among them.
 		$result = Update_Zombie_Store::query(
 			array(
 				'item_type' => $type,
-				'per_page'  => 5,
-				'search'    => '',
+				'search'    => $slug,
+				'per_page'  => 20,
 			)
 		);
 
@@ -410,9 +413,24 @@ class Update_Zombie_Enforcer {
 				continue;
 			}
 
-			if ( Update_Zombie_Store::DECISION_SCHEDULED === $row->decision ) {
-				Update_Zombie_Store::update( $row->id, array( 'decision' => Update_Zombie_Store::DECISION_AUTO ) );
+			$was_ours = Update_Zombie_Store::DECISION_SCHEDULED === $row->decision;
+			$changes  = array( 'applied_at' => current_time( 'mysql', true ) );
+
+			if ( $was_ours ) {
+				$changes['decision'] = Update_Zombie_Store::DECISION_AUTO;
+				$row->decision       = Update_Zombie_Store::DECISION_AUTO;
 			}
+
+			Update_Zombie_Store::update( $row->id, $changes );
+
+			Update_Zombie_Log::record(
+				Update_Zombie_Log::INSTALLED,
+				$was_ours
+					? __( 'Installed automatically by Update Zombie.', 'update-zombie' )
+					: __( 'Installed by WordPress or by hand.', 'update-zombie' ),
+				$row,
+				array( 'automatic' => $was_ours )
+			);
 
 			return;
 		}

@@ -46,7 +46,6 @@ class Update_Zombie_Reports_Table extends WP_List_Table {
 			'versions'  => __( 'Versions', 'update-zombie' ),
 			'verdict'   => __( 'Verdict', 'update-zombie' ),
 			'security'  => __( 'Security fix', 'update-zombie' ),
-			'decision'  => __( 'Action', 'update-zombie' ),
 			'created_at' => __( 'Seen', 'update-zombie' ),
 		);
 	}
@@ -75,36 +74,55 @@ class Update_Zombie_Reports_Table extends WP_List_Table {
 	 * @return array<string, string>
 	 */
 	protected function get_views() {
-		$statuses = array(
-			''                                   => __( 'All', 'update-zombie' ),
-			Update_Zombie_Store::STATUS_PENDING  => __( 'Queued', 'update-zombie' ),
-			Update_Zombie_Store::STATUS_DIFFED   => __( 'Awaiting review', 'update-zombie' ),
-			Update_Zombie_Store::STATUS_COMPLETE => __( 'Analysed', 'update-zombie' ),
-			Update_Zombie_Store::STATUS_ERROR    => __( 'Failed', 'update-zombie' ),
+		$current = self::current_view();
+
+		$counts = array(
+			'attention' => Update_Zombie_Store::query( array( 'applied' => 'no', 'per_page' => 1 ) )['total'],
+			'done'      => Update_Zombie_Store::query( array( 'applied' => 'yes', 'per_page' => 1 ) )['total'],
+			'failed'    => Update_Zombie_Store::count_by_status( Update_Zombie_Store::STATUS_ERROR ),
 		);
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only filter.
-		$current = isset( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : '';
+		$labels = array(
+			'attention' => __( 'Needs attention', 'update-zombie' ),
+			'done'      => __( 'Done', 'update-zombie' ),
+			'failed'    => __( 'Failed', 'update-zombie' ),
+			'all'       => __( 'All', 'update-zombie' ),
+		);
 
 		$views = array();
 
-		foreach ( $statuses as $status => $label ) {
-			$url = $status
-				? add_query_arg( 'status', $status, Update_Zombie_Admin::reports_url() )
-				: Update_Zombie_Admin::reports_url();
+		foreach ( $labels as $key => $label ) {
+			$url = 'attention' === $key
+				? Update_Zombie_Admin::reports_url()
+				: add_query_arg( 'view', $key, Update_Zombie_Admin::reports_url() );
 
-			$count = $status ? Update_Zombie_Store::count_by_status( $status ) : null;
-
-			$views[ $status ? $status : 'all' ] = sprintf(
+			$views[ $key ] = sprintf(
 				'<a href="%s"%s>%s%s</a>',
 				esc_url( $url ),
-				$current === $status ? ' class="current"' : '',
+				$current === $key ? ' class="current"' : '',
 				esc_html( $label ),
-				null === $count ? '' : ' <span class="count">(' . (int) $count . ')</span>'
+				isset( $counts[ $key ] ) ? ' <span class="count">(' . (int) $counts[ $key ] . ')</span>' : ''
 			);
 		}
 
 		return $views;
+	}
+
+	/**
+	 * Returns the active list view.
+	 *
+	 * The default is the inbox: updates not yet installed. Done and Failed
+	 * are one click away, and All is the old flat list.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return string One of attention, done, failed, all.
+	 */
+	public static function current_view() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only filter.
+		$view = isset( $_GET['view'] ) ? sanitize_key( wp_unslash( $_GET['view'] ) ) : 'attention';
+
+		return in_array( $view, array( 'done', 'failed', 'all' ), true ) ? $view : 'attention';
 	}
 
 	/**
@@ -118,11 +136,15 @@ class Update_Zombie_Reports_Table extends WP_List_Table {
 		$per_page = 20;
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Read-only list filtering.
+		$view = self::current_view();
+
 		$args = array(
-			'status'    => isset( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : '',
+			'status'    => 'failed' === $view ? Update_Zombie_Store::STATUS_ERROR : '',
+			'applied'   => 'attention' === $view ? 'no' : ( 'done' === $view ? 'yes' : '' ),
 			'item_type' => isset( $_GET['item_type'] ) ? sanitize_key( wp_unslash( $_GET['item_type'] ) ) : '',
 			'search'    => isset( $_REQUEST['s'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['s'] ) ) : '',
-			'orderby'   => isset( $_GET['orderby'] ) ? sanitize_key( wp_unslash( $_GET['orderby'] ) ) : 'created_at',
+			// The inbox sorts by urgency unless the user clicked a column.
+			'orderby'   => isset( $_GET['orderby'] ) ? sanitize_key( wp_unslash( $_GET['orderby'] ) ) : ( 'attention' === $view ? 'urgency' : 'created_at' ),
 			'order'     => isset( $_GET['order'] ) ? sanitize_key( wp_unslash( $_GET['order'] ) ) : 'desc',
 			'page'      => $this->get_pagenum(),
 			'per_page'  => $per_page,
@@ -152,7 +174,13 @@ class Update_Zombie_Reports_Table extends WP_List_Table {
 	 * @return void
 	 */
 	public function no_items() {
-		esc_html_e( 'Nothing analysed yet. When WordPress offers an update, Update Zombie will pick it up.', 'update-zombie' );
+		if ( 'attention' === self::current_view() ) {
+			esc_html_e( 'Nothing needs your attention. Everything WordPress has offered is either installed or waiting on the queue.', 'update-zombie' );
+
+			return;
+		}
+
+		esc_html_e( 'Nothing here yet. When WordPress offers an update, Update Zombie will pick it up.', 'update-zombie' );
 	}
 
 	/**
@@ -215,11 +243,145 @@ class Update_Zombie_Reports_Table extends WP_List_Table {
 	 * @return string
 	 */
 	public function column_versions( $item ) {
+		$state = self::installed_state( $item );
+
+		// Bold whichever version is actually running; green once it's the new one.
+		$old = sprintf( '<code class="%s">%s</code>', $state['updated'] ? '' : 'uz-ver-current', esc_html( $item->old_version ? $item->old_version : '?' ) );
+		$new = sprintf( '<code class="%s">%s</code>', $state['updated'] ? 'uz-ver-current uz-ver-updated' : '', esc_html( $item->new_version ) );
+
 		return sprintf(
-			'<code>%s</code> → <code>%s</code>',
-			esc_html( $item->old_version ? $item->old_version : '?' ),
-			esc_html( $item->new_version )
+			'%s → %s<br>%s',
+			$old,
+			$new,
+			self::status_badge( $item, $state )
 		);
+	}
+
+	/**
+	 * Works out what is actually installed right now.
+	 *
+	 * The verdict says what the zombie decided; this says what happened. The
+	 * two differ whenever WordPress or a human installed the update instead.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param object $item Report row.
+	 * @return array{installed: string, updated: bool}
+	 */
+	public static function installed_state( $item ) {
+		static $plugins = null;
+
+		$installed = '';
+
+		if ( 'plugin' === $item->item_type ) {
+			if ( null === $plugins ) {
+				if ( ! function_exists( 'get_plugins' ) ) {
+					require_once ABSPATH . 'wp-admin/includes/plugin.php';
+				}
+
+				$plugins = get_plugins();
+			}
+
+			$installed = (string) ( $plugins[ $item->item_file ]['Version'] ?? '' );
+		} elseif ( 'theme' === $item->item_type ) {
+			$theme     = wp_get_theme( $item->item_slug );
+			$installed = $theme->exists() ? (string) $theme->get( 'Version' ) : '';
+		} elseif ( 'core' === $item->item_type ) {
+			$installed = Update_Zombie_Scanner::current_core_version();
+		}
+
+		return array(
+			'installed' => $installed,
+			'updated'   => '' !== $installed && version_compare( $installed, $item->new_version, '>=' ),
+		);
+	}
+
+	/**
+	 * Renders the one-line outcome shown under the version numbers.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param object                                $item  Report row.
+	 * @param array{installed: string, updated: bool} $state Installed state.
+	 * @return string
+	 */
+	protected static function status_badge( $item, array $state ) {
+		if ( $state['updated'] ) {
+			$auto = in_array( $item->decision, array( Update_Zombie_Store::DECISION_AUTO, Update_Zombie_Store::DECISION_SCHEDULED ), true );
+
+			return sprintf(
+				'<span class="uz-status uz-status-ok">&#10003; %s</span>',
+				esc_html( $auto ? __( 'Automatically updated', 'update-zombie' ) : __( 'Updated', 'update-zombie' ) )
+			);
+		}
+
+		if ( Update_Zombie_Store::STATUS_COMPLETE !== $item->status ) {
+			// A row that failed and was requeued says so, rather than looking
+			// like it has never been tried.
+			if ( Update_Zombie_Store::STATUS_ERROR !== $item->status && ! empty( $item->error_message ) && (int) $item->attempts > 0 ) {
+				return sprintf(
+					'<span class="uz-status uz-status-warn" title="%s">%s</span>',
+					esc_attr( $item->error_message ),
+					esc_html(
+						sprintf(
+							/* translators: %d: attempt number. */
+							__( 'Failed, retrying — attempt %d of 3', 'update-zombie' ),
+							min( 3, (int) $item->attempts + 1 )
+						)
+					)
+				);
+			}
+
+			return '<span class="uz-status uz-status-muted">' . esc_html__( 'No decision yet', 'update-zombie' ) . '</span>';
+		}
+
+		$link = self::update_link( $item );
+
+		switch ( $item->decision ) {
+			case Update_Zombie_Store::DECISION_SCHEDULED:
+				return '<span class="uz-status uz-status-info">' . esc_html__( 'Queued for automatic update', 'update-zombie' ) . '</span>';
+			case Update_Zombie_Store::DECISION_HELD:
+				return '<span class="uz-status uz-status-warn">' . esc_html__( 'Held back — needs manual update', 'update-zombie' ) . '</span>' . $link;
+			case Update_Zombie_Store::DECISION_ADVISORY:
+				return '<span class="uz-status uz-status-muted">' . esc_html( $item->is_security ? __( 'Needs manual update', 'update-zombie' ) : __( 'Reported only — WordPress decides', 'update-zombie' ) ) . '</span>' . $link;
+		}
+
+		return '<span class="uz-status uz-status-muted">' . esc_html__( 'No decision yet', 'update-zombie' ) . '</span>' . $link;
+	}
+
+	/**
+	 * Returns WordPress's own "update now" link for an item.
+	 *
+	 * This is the same nonced URL the Plugins screen uses, so it goes through
+	 * core's updater with core's permission checks. Nothing here is ours.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param object $item Report row.
+	 * @return string Link markup, or an empty string when not applicable.
+	 */
+	public static function update_link( $item ) {
+		if ( 'plugin' === $item->item_type && current_user_can( 'update_plugins' ) && $item->item_file ) {
+			$url = wp_nonce_url(
+				self_admin_url( 'update.php?action=upgrade-plugin&plugin=' . rawurlencode( $item->item_file ) ),
+				'upgrade-plugin_' . $item->item_file
+			);
+		} elseif ( 'theme' === $item->item_type && current_user_can( 'update_themes' ) ) {
+			$url = wp_nonce_url(
+				self_admin_url( 'update.php?action=upgrade-theme&theme=' . rawurlencode( $item->item_slug ) ),
+				'upgrade-theme_' . $item->item_slug
+			);
+		} elseif ( 'core' === $item->item_type && current_user_can( 'update_core' ) ) {
+			$url = self_admin_url( 'update-core.php' );
+		} else {
+			return '';
+		}
+
+		$label = Update_Zombie_Store::DECISION_HELD === $item->decision
+			? __( 'Update anyway', 'update-zombie' )
+			: __( 'Update now', 'update-zombie' );
+
+		return sprintf( ' <a class="uz-update-link" href="%s">%s &rarr;</a>', esc_url( $url ), esc_html( $label ) );
 	}
 
 	/**
@@ -252,10 +414,15 @@ class Update_Zombie_Reports_Table extends WP_List_Table {
 			);
 		}
 
+		$applied = self::installed_state( $item )['updated']
+			? ' <span class="uz-badge uz-badge-applied">&#10003; ' . esc_html__( 'Applied', 'update-zombie' ) . '</span>'
+			: '';
+
 		return sprintf(
-			'<span class="uz-badge uz-badge-%s">%s</span><br><span class="uz-muted">%s</span>',
+			'<span class="uz-badge uz-badge-%s">%s</span>%s<br><span class="uz-muted">%s</span>',
 			esc_attr( $item->verdict ),
 			esc_html( Update_Zombie_Admin::verdict_label( $item->verdict ) ),
+			$applied,
 			esc_html( $item->headline )
 		);
 	}
@@ -299,6 +466,7 @@ class Update_Zombie_Reports_Table extends WP_List_Table {
 	 * @return string
 	 */
 	public function column_decision( $item ) {
+		// Folded into the versions column; kept for any custom column config.
 		return esc_html( Update_Zombie_Admin::decision_label( $item->decision ) );
 	}
 

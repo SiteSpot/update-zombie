@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 class Update_Zombie_Store {
 
 	const DB_VERSION_OPTION = 'update_zombie_db_version';
-	const DB_VERSION        = '4';
+	const DB_VERSION        = '5';
 
 	const STATUS_PENDING   = 'pending';
 	const STATUS_ANALYZING = 'analyzing';
@@ -86,6 +86,7 @@ class Update_Zombie_Store {
 			created_at datetime NOT NULL,
 			analyzed_at datetime NULL,
 			notified_at datetime NULL,
+			applied_at datetime NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY item_version (item_type,item_slug,new_version),
 			KEY status_created (status,created_at),
@@ -359,6 +360,11 @@ class Update_Zombie_Store {
 				'page'      => 1,
 				'orderby'   => 'created_at',
 				'order'     => 'DESC',
+				/**
+				 * "yes" for updates that are installed, "no" for ones that are
+				 * not, empty for both.
+				 */
+				'applied'   => '',
 			)
 		);
 
@@ -373,6 +379,12 @@ class Update_Zombie_Store {
 			}
 		}
 
+		if ( 'yes' === $args['applied'] ) {
+			$where[] = 'applied_at IS NOT NULL';
+		} elseif ( 'no' === $args['applied'] ) {
+			$where[] = 'applied_at IS NULL';
+		}
+
 		if ( '' !== $args['search'] ) {
 			$where[]  = '(item_name LIKE %s OR item_slug LIKE %s)';
 			$like     = '%' . $wpdb->esc_like( $args['search'] ) . '%';
@@ -385,6 +397,16 @@ class Update_Zombie_Store {
 		$allowed_orderby = array( 'created_at', 'analyzed_at', 'item_name', 'verdict', 'confidence', 'status' );
 		$orderby         = in_array( $args['orderby'], $allowed_orderby, true ) ? $args['orderby'] : 'created_at';
 		$order           = 'ASC' === strtoupper( (string) $args['order'] ) ? 'ASC' : 'DESC';
+
+		/*
+		 * "Urgency" puts what a human should look at first: security fixes
+		 * awaiting a manual install, then anything held back, then the rest by
+		 * recency. In-progress items sink, since there is nothing to do yet.
+		 */
+		if ( 'urgency' === $args['orderby'] ) {
+			$orderby = "is_security DESC, FIELD( decision, 'held', 'advisory', 'auto_scheduled', 'none' ), FIELD( status, 'complete', 'error', 'diffed', 'analyzing', 'pending' ), created_at";
+			$order   = 'DESC';
+		}
 
 		$per_page = max( 1, (int) $args['per_page'] );
 		$offset   = max( 0, ( (int) $args['page'] - 1 ) * $per_page );
@@ -437,6 +459,88 @@ class Update_Zombie_Store {
 		$decoded = json_decode( (string) $report->payload, true );
 
 		return is_array( $decoded ) ? $decoded : array();
+	}
+
+	/**
+	 * Marks reports as applied when the update turns out to be installed.
+	 *
+	 * The upgrader hook catches installs the zombie triggers; this catches
+	 * everything else — WordPress's own auto-updates, a human pressing the
+	 * button, a deploy — by comparing what is on disk with what was offered.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return int Number of reports newly marked applied.
+	 */
+	public static function reconcile_applied() {
+		global $wpdb;
+
+		$table = self::table();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$rows = $wpdb->get_results( "SELECT id, item_type, item_slug, item_file, new_version FROM {$table} WHERE applied_at IS NULL" );
+
+		$marked = 0;
+
+		foreach ( (array) $rows as $row ) {
+			$installed = Update_Zombie_Scanner::installed_version( $row );
+
+			if ( '' !== $installed && version_compare( $installed, $row->new_version, '>=' ) ) {
+				self::update( $row->id, array( 'applied_at' => current_time( 'mysql', true ) ) );
+				++$marked;
+			}
+		}
+
+		return $marked;
+	}
+
+	/**
+	 * Counts reports a person should look at: judged, not installed, and
+	 * either a security fix or held back.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return int
+	 */
+	public static function count_attention() {
+		global $wpdb;
+
+		$table = self::table();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$table} WHERE applied_at IS NULL AND status = %s AND ( is_security = 1 OR decision = %s )",
+				self::STATUS_COMPLETE,
+				self::DECISION_HELD
+			)
+		);
+	}
+
+	/**
+	 * Returns updates installed automatically in the last N days, newest first.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param int $days Window in days.
+	 * @return object[]
+	 */
+	public static function auto_applied_since( $days ) {
+		global $wpdb;
+
+		$table  = self::table();
+		$cutoff = gmdate( 'Y-m-d H:i:s', time() - ( max( 1, (int) $days ) * DAY_IN_SECONDS ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return (array) $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT id, item_name, item_slug, old_version, new_version, is_security, applied_at FROM {$table}
+				 WHERE applied_at IS NOT NULL AND applied_at >= %s AND decision = %s
+				 ORDER BY applied_at DESC",
+				$cutoff,
+				self::DECISION_AUTO
+			)
+		);
 	}
 
 	/**

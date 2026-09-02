@@ -3,7 +3,7 @@
  * Plugin Name:       Update Zombie
  * Plugin URI:        https://sitespot.dev/updatezombie
  * Description:       Don't let all these updates turn you into a zombie. Downloads each pending update, diffs it against what you're running, and has an AI judge whether it's a security fix, a good update, or a shit one.
- * Version:           0.5.0
+ * Version:           0.6.0
  * Requires at least: 7.0
  * Requires PHP:      7.4
  * Author:            AB Split Test
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'UPDATE_ZOMBIE_VERSION', '0.5.0' );
+define( 'UPDATE_ZOMBIE_VERSION', '0.6.0' );
 define( 'UPDATE_ZOMBIE_FILE', __FILE__ );
 define( 'UPDATE_ZOMBIE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'UPDATE_ZOMBIE_URL', plugin_dir_url( __FILE__ ) );

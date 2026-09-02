@@ -31,6 +31,24 @@ Then, in **Guarded** mode:
 
 **Stop panicking about updates.** Let the zombie eat them.
 
+## What you see
+
+It lives under **Tools → Update Zombie**, three tabs: Reports, Activity, Settings.
+
+**Reports is an inbox, not a ledger.** The default view shows only updates that are *not* installed, sorted with security fixes first, then anything held back, then routine stuff. Each row shows the version actually running (bold, green once it's the new one), a one-line outcome — *Automatically updated*, *Needs manual update*, *Held back*, *Reported only* — and an **Update now** link that hands off to WordPress's own updater. Installed updates move to a **Done** view so they stop nagging you; **Failed** and **All** are one click away.
+
+Above the list, a single collapsible line takes the credit:
+
+> ✓ The zombie installed 6 updates on its own in the last 7 days — 6 of them security fixes. *Show them*
+
+**A report** leads with the verdict — badge, headline, four boxes for *Security fix / Recommendation / Action taken / Release notes back this up* — then the summary, then the computed **What changed** facts, then the findings with file paths and excerpts. Press **Re-analyse** and the work runs in the background while the page shows which phase it's in and refreshes itself; you can leave.
+
+**The Plugins screen** gets the verdict under each plugin's row, so you see it where you already look.
+
+**Activity** is the audit trail: every update spotted, analysis run, verdict, install and failure, including everything that happened while you weren't looking.
+
+The menu badge counts what needs a human — uninstalled security fixes and held-back updates — not the size of the queue.
+
 ## Modes
 
 | Mode | Security fixes | Good updates | Bad updates |
@@ -107,7 +125,9 @@ add_filter( 'update_zombie_model', fn( $model, $step ) =>
 add_action( 'update_zombie_verdict_recorded', fn( $report, $verdict ) => /* … */, 10, 2 );
 ```
 
-Analysis runs in two phases across separate cron ticks — download and diff on one, model calls on the next — so no single PHP request has to survive the whole job. A webhook (HMAC-signed) and email notifications are available in settings.
+Analysis runs in two phases across separate cron ticks — download and diff on one, model calls on the next — so no single PHP request has to survive the whole job. Any failure (a download timeout, a stalled provider, a malformed reply) requeues the item for the next run; three strikes and it stays failed, with a note saying why. It polls WordPress.org itself every 15 minutes rather than waiting for core's twice-daily check. A webhook (HMAC-signed) and email notifications are available in settings.
+
+For production, run WP-Cron from system cron (`DISABLE_WP_CRON` plus `php wp-cron.php` every five minutes) so the web server's request timeout can't cut a long model call short.
 
 ## License
 

@@ -455,17 +455,36 @@ class Update_Zombie_Processor {
 	 * @return void
 	 */
 	protected function fail( $report, WP_Error $error ) {
-		$fresh     = Update_Zombie_Store::get( $report->id );
-		$attempts  = $fresh ? (int) $fresh->attempts : 0;
-		$transient = in_array( $error->get_error_code(), array( 'update_zombie_ai_timeout', 'update_zombie_ai_transient' ), true );
+		$fresh    = Update_Zombie_Store::get( $report->id );
+		$attempts = $fresh ? (int) $fresh->attempts : 0;
 
 		/*
-		 * A slow or hiccuping provider is not a verdict on the update. Put the
-		 * item back in the queue for the next tick instead of parking it as a
-		 * failure someone has to notice and click. The diff is kept, so the
-		 * retry is only the model call. Three strikes and it does stay failed.
+		 * Almost every failure is worth another go later: a download that
+		 * timed out, a provider that stalled, a malformed reply. The only ones
+		 * that are not are those that cannot change by waiting — the update is
+		 * no longer offered, the installed copy is missing, the package URL is
+		 * bad, or the filesystem needs credentials we do not have.
 		 */
-		if ( $transient && $attempts < 3 ) {
+		$permanent = array(
+			'update_zombie_no_package',
+			'update_zombie_missing_install',
+			'update_zombie_bad_url',
+			'update_zombie_filesystem',
+			'update_zombie_filesystem_method',
+			'update_zombie_no_ai_api',
+			'update_zombie_ai_disabled',
+			'update_zombie_no_key',
+		);
+
+		$retryable = ! in_array( $error->get_error_code(), $permanent, true );
+
+		/*
+		 * Put the item back in the queue for the next tick instead of parking
+		 * it as a failure someone has to notice and click. A cached diff is
+		 * kept, so a retry after the model call is only the model call.
+		 * Three strikes and it does stay failed.
+		 */
+		if ( $retryable && $attempts < 3 ) {
 			Update_Zombie_Store::update(
 				$report->id,
 				array(

@@ -32,16 +32,14 @@ $uz_engine   = $payload['engine'] ?? 'ai';
 
 	<hr class="wp-header-end">
 
-	<?php if ( $uz_signals ) : ?>
-		<div class="uz-signal-bar">
-			<h2><?php esc_html_e( 'What changed', 'update-zombie' ); ?></h2>
-			<p class="description"><?php esc_html_e( 'Computed directly from the diff. These are facts about the files, not the AI\'s opinion, and they are the same every run.', 'update-zombie' ); ?></p>
-			<?php
-			echo Update_Zombie_Chips::render( $uz_signals, 20 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped inside the renderer.
-			echo Update_Zombie_Chips::render_breakdown( $uz_signals ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped inside the renderer.
-			?>
-		</div>
-	<?php endif; ?>
+	<?php
+	// While the analysis is still running the computed facts are the whole
+	// story, so they lead. Once there is a verdict, that leads instead and the
+	// facts follow it (see the complete branch below).
+	if ( Update_Zombie_Store::STATUS_COMPLETE !== $report->status ) {
+		require UPDATE_ZOMBIE_DIR . 'admin/views/partials/what-changed.php';
+	}
+	?>
 
 	<?php if ( Update_Zombie_Store::STATUS_ERROR === $report->status ) : ?>
 		<div class="notice notice-error">
@@ -115,6 +113,14 @@ $uz_engine   = $payload['engine'] ?? 'ai';
 				<span class="uz-badge uz-badge-<?php echo esc_attr( $report->verdict ); ?>">
 					<?php echo esc_html( Update_Zombie_Admin::verdict_label( $report->verdict ) ); ?>
 				</span>
+				<?php
+				$uz_state = Update_Zombie_Reports_Table::installed_state( $report );
+
+				if ( $uz_state['updated'] ) :
+					$uz_auto = in_array( $report->decision, array( Update_Zombie_Store::DECISION_AUTO, Update_Zombie_Store::DECISION_SCHEDULED ), true );
+					?>
+					<span class="uz-badge uz-badge-applied">&#10003; <?php echo esc_html( $uz_auto ? __( 'Automatically updated', 'update-zombie' ) : __( 'Updated', 'update-zombie' ) ); ?></span>
+				<?php endif; ?>
 				<h2><?php echo esc_html( $report->headline ); ?></h2>
 			</div>
 
@@ -143,7 +149,19 @@ $uz_engine   = $payload['engine'] ?? 'ai';
 				</div>
 				<div>
 					<dt><?php esc_html_e( 'Action taken', 'update-zombie' ); ?></dt>
-					<dd><?php echo esc_html( Update_Zombie_Admin::decision_label( $report->decision ) ); ?></dd>
+					<dd>
+						<?php
+						$uz_state = Update_Zombie_Reports_Table::installed_state( $report );
+
+						if ( $uz_state['updated'] ) {
+							$uz_auto = in_array( $report->decision, array( Update_Zombie_Store::DECISION_AUTO, Update_Zombie_Store::DECISION_SCHEDULED ), true );
+							echo '<span class="uz-fact-ok">&#10003; ' . esc_html( $uz_auto ? __( 'Automatically updated', 'update-zombie' ) : __( 'Updated', 'update-zombie' ) ) . '</span>';
+						} else {
+							echo esc_html( Update_Zombie_Admin::decision_label( $report->decision ) );
+							echo ' ' . Update_Zombie_Reports_Table::update_link( $report ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped inside the helper.
+						}
+						?>
+					</dd>
 				</div>
 				<div>
 					<dt><?php esc_html_e( 'Release notes back this up', 'update-zombie' ); ?></dt>
@@ -161,6 +179,8 @@ $uz_engine   = $payload['engine'] ?? 'ai';
 
 			<p class="uz-summary"><?php echo esc_html( $report->summary ); ?></p>
 		</div>
+
+		<?php require UPDATE_ZOMBIE_DIR . 'admin/views/partials/what-changed.php'; ?>
 
 		<?php if ( ( ! empty( $report->is_security ) || 'security' === $report->verdict ) && isset( $payload['security_substantiated'] ) && ! $payload['security_substantiated'] ) : ?>
 			<div class="notice notice-warning inline">

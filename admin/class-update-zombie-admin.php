@@ -33,6 +33,7 @@ class Update_Zombie_Admin {
 	public function init() {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_init', array( $this, 'redirect_legacy_urls' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_notices', array( $this, 'render_notices' ) );
 
@@ -51,7 +52,9 @@ class Update_Zombie_Admin {
 	 * @return void
 	 */
 	public function register_menu() {
-		$pending = Update_Zombie_Store::count_by_status( Update_Zombie_Store::STATUS_PENDING );
+		// The badge nags about what needs a human: security fixes not yet
+		// installed and anything held back. Not the queue, not the done pile.
+		$pending = Update_Zombie_Store::count_attention();
 
 		$title = __( 'Update Zombie', 'update-zombie' );
 
@@ -62,42 +65,123 @@ class Update_Zombie_Admin {
 			);
 		}
 
-		add_menu_page(
+		// One entry under Tools; Reports, Activity and Settings are tabs.
+		add_management_page(
 			__( 'Update Zombie', 'update-zombie' ),
 			$title,
 			self::CAP_VIEW,
 			self::PAGE_REPORTS,
-			array( $this, 'render_reports_page' ),
-			'dashicons-shield-alt',
-			76
+			array( $this, 'render_page' )
+		);
+	}
+
+	/**
+	 * Routes the single Tools-menu page to the right tab.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return void
+	 */
+	public function render_page() {
+		switch ( self::current_tab() ) {
+			case 'activity':
+				$this->render_activity_page();
+				break;
+			case 'settings':
+				$this->render_settings_page();
+				break;
+			default:
+				$this->render_reports_page();
+		}
+	}
+
+	/**
+	 * Returns the active tab.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return string One of reports, activity, settings.
+	 */
+	public static function current_tab() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only view routing.
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'reports';
+
+		return in_array( $tab, array( 'activity', 'settings' ), true ) ? $tab : 'reports';
+	}
+
+	/**
+	 * Renders the tab navigation shared by the three screens.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return void
+	 */
+	public static function render_tabs() {
+		$tabs = array(
+			'reports'  => array( __( 'Reports', 'update-zombie' ), self::reports_url(), self::CAP_VIEW ),
+			'activity' => array( __( 'Activity', 'update-zombie' ), self::activity_url(), self::CAP_VIEW ),
+			'settings' => array( __( 'Settings', 'update-zombie' ), self::settings_url(), self::CAP_MANAGE ),
 		);
 
-		add_submenu_page(
-			self::PAGE_REPORTS,
-			__( 'Update Reports', 'update-zombie' ),
-			__( 'Reports', 'update-zombie' ),
-			self::CAP_VIEW,
-			self::PAGE_REPORTS,
-			array( $this, 'render_reports_page' )
+		$current = self::current_tab();
+
+		echo '<nav class="nav-tab-wrapper uz-tabs" aria-label="' . esc_attr__( 'Update Zombie sections', 'update-zombie' ) . '">';
+
+		foreach ( $tabs as $key => $tab ) {
+			if ( ! current_user_can( $tab[2] ) ) {
+				continue;
+			}
+
+			printf(
+				'<a href="%s" class="nav-tab%s">%s</a>',
+				esc_url( $tab[1] ),
+				$current === $key ? ' nav-tab-active' : '',
+				esc_html( $tab[0] )
+			);
+		}
+
+		echo '</nav>';
+	}
+
+	/**
+	 * Sends the old top-level menu URLs to their new home under Tools.
+	 *
+	 * Bookmarks, notification emails already sent, and the webhook payloads
+	 * all carry the old admin.php links.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return void
+	 */
+	public function redirect_legacy_urls() {
+		global $pagenow;
+
+		if ( 'admin.php' !== $pagenow ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only routing.
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+
+		$map = array(
+			self::PAGE_REPORTS  => self::reports_url(),
+			self::PAGE_ACTIVITY => self::activity_url(),
+			self::PAGE_SETTINGS => self::settings_url(),
 		);
 
-		add_submenu_page(
-			self::PAGE_REPORTS,
-			__( 'Update Zombie Activity', 'update-zombie' ),
-			__( 'Activity', 'update-zombie' ),
-			self::CAP_VIEW,
-			self::PAGE_ACTIVITY,
-			array( $this, 'render_activity_page' )
-		);
+		if ( ! isset( $map[ $page ] ) ) {
+			return;
+		}
 
-		add_submenu_page(
-			self::PAGE_REPORTS,
-			__( 'Update Zombie Settings', 'update-zombie' ),
-			__( 'Settings', 'update-zombie' ),
-			self::CAP_MANAGE,
-			self::PAGE_SETTINGS,
-			array( $this, 'render_settings_page' )
-		);
+		$target = $map[ $page ];
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Preserving a report ID in a redirect.
+		if ( isset( $_GET['report'] ) ) {
+			$target = add_query_arg( 'report', absint( $_GET['report'] ), $target );
+		}
+
+		wp_safe_redirect( $target, 301 );
+		exit;
 	}
 
 	/**
@@ -240,7 +324,7 @@ class Update_Zombie_Admin {
 	 * @return string
 	 */
 	public static function activity_url() {
-		return admin_url( 'admin.php?page=' . self::PAGE_ACTIVITY );
+		return admin_url( 'tools.php?page=' . self::PAGE_REPORTS . '&tab=activity' );
 	}
 
 	/**
@@ -677,7 +761,7 @@ class Update_Zombie_Admin {
 	 * @return string
 	 */
 	public static function reports_url() {
-		return admin_url( 'admin.php?page=' . self::PAGE_REPORTS );
+		return admin_url( 'tools.php?page=' . self::PAGE_REPORTS );
 	}
 
 	/**
@@ -700,7 +784,7 @@ class Update_Zombie_Admin {
 	 * @return string
 	 */
 	public static function settings_url() {
-		return admin_url( 'admin.php?page=' . self::PAGE_SETTINGS );
+		return admin_url( 'tools.php?page=' . self::PAGE_REPORTS . '&tab=settings' );
 	}
 
 	/**

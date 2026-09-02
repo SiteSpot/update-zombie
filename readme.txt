@@ -4,7 +4,7 @@ Tags: updates, security, auto-update, ai, code review
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.5.0
+Stable tag: 0.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -48,6 +48,10 @@ For a production site, put the key in `wp-config.php` rather than the database:
 `define( 'UPDATE_ZOMBIE_OPENROUTER_KEY', 'sk-or-v1-…' );`
 
 The constant always overrides the settings field, and keeps the key out of the database and out of every database backup.
+
+**What you see**
+
+It lives under Tools → Update Zombie. The Reports tab is an inbox: by default it lists only updates that are not installed, security fixes first, each with the version actually running, a one-line outcome and an Update now link that hands off to WordPress's own updater. Installed updates move to a Done view. A single collapsible line above the list says what the zombie installed on its own in the last week. The Plugins screen shows the verdict under each plugin's row, and the Activity tab is the full audit trail.
 
 **Facts, then judgement**
 
@@ -138,55 +142,25 @@ Because it has not read the fix. It can tell that escaping was added to a file t
 
 == Changelog ==
 
+= 0.6.0 =
+* Reports is now an inbox: the default view lists only updates that are not installed, security fixes first, with installed ones in a separate Done view and a collapsible summary of what the zombie installed on its own in the last week.
+* Each row shows the version actually running, a one-line outcome, and an Update now link to WordPress's own updater. Reports lead with the verdict and show the installed state beside it.
+* Moved under Tools as a single tabbed page. Old links redirect.
+* Any failure requeues the item for the next run, up to three attempts, with the reason shown in the list.
+
 = 0.5.0 =
-* Shows compact Update Zombie statuses beside plugin names on Dashboard > Updates and Plugins, with a distinct red Security badge for security fixes.
-* Polls WordPress and registered premium/private update providers every fifteen minutes from its own cron instead of waiting for core's twice-daily check. Installation timing depends on WP-Cron traffic and provider availability.
-* Only high- or critical-impact security findings can widen auto-update, and only when the same finding meets the confidence threshold and cites a file actually included in the review.
-* Lower-impact, uncertain, malformed, or uncited security findings follow the site's normal WordPress auto-update policy, including in Autopilot. The no-AI engine is report-only because it cannot reliably grade impact.
-* Fixed premium and single-file plugin identity so reports match the exact object passed through WordPress's official auto-update hooks.
-* Forced discovery now bypasses WordPress's two-hour cron cache in memory without deleting saved update data, and ignores its own transient writes to prevent a one-minute scan loop.
-* Uninstall now removes both plugin database tables.
-* Malformed provider responses are treated as transient and retried once.
-* Repository README, .gitignore.
-
-= 0.4.0 =
-* The security question is also asked per flagged file (the pattern scan knows which files gained nonce checks, escaping or prepared statements), since a fast model answers small focused prompts far more reliably than a whole diff. Findings from both passes are merged.
-* The response schema is sent in the strict {name, strict, schema} form OpenAI-compatible APIs enforce; the SDK omits the wrapper. The parser also tolerates bare arrays and synonym keys, which had been silently discarding real findings.
-* Fixed: a manual "Analyse now" could be double-processed by the cron queue between phases.
-* Timeouts on small requests are retried once and reported as provider slowness, not prompt size.
-* Analysis is now two model calls: one returns structured findings only (its schema has no prose field, so evidence has nowhere to go but the arrays), and a second small call writes the headline and summary from those findings.
-* Whether an update is a security fix is derived from cited findings rather than asserted by the model, so a security verdict with nothing cited can no longer occur.
-* Each finding carries its own confidence; the overall confidence is the strongest of them.
-
-= 0.3.3 =
-* Analysis now runs in two phases across separate cron ticks: download and diff on one, the model call on the next. No single PHP request has to survive both, which is what was killing long analyses.
-* Only ever raise PHP's execution limit, never lower it. Calling set_time_limit(300) where max_execution_time was 0 imposed a ceiling that was not there before.
-* Request timeouts scale with prompt size and are far more generous.
-
-= 0.3.2 =
-* Fixed: request timeouts. The per-request timeout was never passed to the HTTP request, so every analysis was cut off at WordPress's five second default. Timeouts now scale with prompt size.
-* Fixed: timeout errors now say what to change instead of reporting a raw cURL code.
-* A security verdict that cites no file is retried once, and is shown on the report as unsubstantiated rather than failing silently.
-* Default diff budget lowered to 500,000 characters after measuring that oversized prompts produce worse analyses at far higher cost.
-
-= 0.3.1 =
-* Fixed: number fields rejected sensible values. A step attribute meant the diff budget only accepted 20,000 plus a multiple of 100,000, and the confidence threshold only multiples of 5.
-* Diff budget and per-file size limit are now preset dropdowns; a custom value set by a filter is preserved and still shown.
+* Auto-install is gated on impact: only high- or critical-impact security fixes, cited to a file that was actually reviewed, install unattended.
+* Verdict shown under each plugin on the Plugins and Updates screens.
+* Analyse now runs in the background; the report page shows the phase, an honest time estimate, and refreshes itself.
+* WordPress.org icon, banners and screenshots.
 
 = 0.3.0 =
-* New: computed change signals (styling, markup, JavaScript, outbound HTTP, REST, cron, schema, security checks added or removed, risky functions), shown as chips on the reports screen and broken down per report.
-* New: Activity log page recording everything the plugin did, including unattended.
-* New: no-AI engine (changelog plus diff pattern scan) needing no API key, no cost, and sending nothing off-site.
-* Signals are computed from the diff, not generated by the model, so they are exact and survive a failed analysis.
-* Fixed: security-check detection now measures net change, so reformatting a line containing esc_attr() no longer reports "security checks removed".
-
-= 0.2.0 =
-* Registers OpenRouter with the core AI Client registry; WordPress ships the SDK but no providers.
-* API key via wp-config constant or settings field, constant wins.
-* Default model z-ai/glm-5.3-flash; any OpenRouter model ID accepted.
-* Diff budget default raised to 4,000,000 characters, ceiling 8,000,000.
-* Configurable request timeout for large diffs.
-* Fixed: builder calls must be snake_case, or AI errors are silently swallowed.
+* Computed change signals (styling, markup, JavaScript, outbound HTTP, REST, cron, schema, security checks added or removed, risky functions) shown as chips and broken down per report.
+* Activity log of everything the plugin did.
+* No-AI engine: changelog corroborated against the diff pattern scan, no key, no cost, nothing off-site.
+* Analysis in two phases across cron ticks; per-file security questions for a fast model; strict response schema; automatic retry of provider stalls; WordPress.org polled every fifteen minutes.
 
 = 0.1.0 =
-* Initial release.
+* Downloads each pending plugin, theme and core update, diffs it against the installed copy, and asks a model via OpenRouter whether the code visibly closes a vulnerability.
+* Security verdicts are derived from cited findings, never asserted. Advisory, Guarded and Autopilot modes.
+* Registers OpenRouter with core's AI Client registry; API key via wp-config constant or settings.
